@@ -1,6 +1,5 @@
 import React from "react";
 import { VehicleData } from "@/lib/sheets";
-import ScoreRing from "./ScoreRing";
 import DonutAlertChart from "./DonutAlertChart";
 
 interface Props {
@@ -28,7 +27,6 @@ function scoreLabel(s: number | null) {
 export default function VehicleCard({ vehicle, index, onClick }: Props) {
   const { vehicleNumber, score, clientName, alerts } = vehicle;
   const clr = scoreColor(score);
-  const safeScore = score ?? 0;
 
   return (
     <div
@@ -51,10 +49,10 @@ export default function VehicleCard({ vehicle, index, onClick }: Props) {
         borderRadius: "20px 20px 0 0",
       }} />
 
-      <div style={{ padding: "18px 18px 16px", display: "flex", flexDirection: "column", flex: 1 }}>
+      <div style={{ padding: "16px 16px 14px", display: "flex", flexDirection: "column", flex: 1 }}>
 
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+        {/* Header row: client + badge */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
           <div>
             <div style={{
               fontSize: "9px",
@@ -70,7 +68,7 @@ export default function VehicleCard({ vehicle, index, onClick }: Props) {
             <div style={{
               fontFamily: "'Bricolage Grotesque', sans-serif",
               fontWeight: 700,
-              fontSize: "14px",
+              fontSize: "15px",
               color: "#f0f7f0",
               letterSpacing: "0.02em",
             }}>
@@ -92,27 +90,38 @@ export default function VehicleCard({ vehicle, index, onClick }: Props) {
           </div>
         </div>
 
-        {/* Score ring */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
-          <ScoreRing score={safeScore} size={90} strokeWidth={7} />
+        {/* Score as plain text */}
+        <div style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: "5px",
+          marginBottom: "12px",
+          paddingLeft: "2px",
+        }}>
+          <span style={{
+            fontFamily: "'Bricolage Grotesque', sans-serif",
+            fontWeight: 800,
+            fontSize: "38px",
+            color: clr,
+            lineHeight: 1,
+            letterSpacing: "-0.02em",
+          }}>
+            {score !== null ? score : "—"}
+          </span>
+          <span style={{
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "12px",
+            color: "rgba(255,255,255,0.3)",
+            fontWeight: 500,
+            marginBottom: "2px",
+          }}>
+            / 100
+          </span>
         </div>
 
-        {/* Mini donut chart */}
-        <div style={{ marginBottom: "12px" }}>
-          <DonutAlertChart alerts={alerts} mini={true} />
-        </div>
+        {/* Donut chart — card mode */}
+        <DonutAlertChart alerts={alerts} card={true} />
 
-        <div style={{ flex: 1 }} />
-
-        {/* View details button */}
-        <button className="btn-green" style={{ width: "100%", justifyContent: "center", fontSize: "12px", padding: "7px 14px" }}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="16" />
-            <line x1="8" y1="12" x2="16" y2="12" />
-          </svg>
-          View Details
-        </button>
       </div>
     </div>
   );
