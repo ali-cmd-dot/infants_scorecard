@@ -23,8 +23,7 @@ function scoreLabel(s: number) {
 }
 
 export default function ClientCard({ client, index, onClick }: Props) {
-  const { name, averageScore, totalVehicles, vehicles } = client;
-  const scored = vehicles.filter(v => v.score !== null).length;
+  const { name, averageScore, totalVehicles } = client;
   const clr = scoreColor(averageScore);
 
   return (
@@ -33,16 +32,16 @@ export default function ClientCard({ client, index, onClick }: Props) {
       style={{ animationDelay: `${index * 0.07}s`, padding: "0" }}
       onClick={onClick}
     >
-      {/* Top gradient bar */}
+      {/* Top accent line */}
       <div style={{
         height: "3px",
-        background: `linear-gradient(90deg, transparent, ${clr}60, transparent)`,
+        background: `linear-gradient(90deg, transparent, ${clr}70, transparent)`,
         borderRadius: "20px 20px 0 0",
       }} />
 
-      <div style={{ padding: "24px 24px 20px" }}>
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+      <div style={{ padding: "22px 22px 18px" }}>
+        {/* Header row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
           <div>
             <div style={{
               fontSize: "10px",
@@ -58,16 +57,17 @@ export default function ClientCard({ client, index, onClick }: Props) {
             <h3 style={{
               fontFamily: "'Bricolage Grotesque', sans-serif",
               fontWeight: 700,
-              fontSize: "17px",
+              fontSize: "16px",
               color: "#f0f7f0",
               lineHeight: 1.25,
               wordBreak: "break-word",
-              maxWidth: "160px",
+              maxWidth: "155px",
+              margin: 0,
             }}>
               {name}
             </h3>
           </div>
-          {/* Score badge */}
+          {/* Score label badge */}
           <div style={{
             background: `${clr}18`,
             border: `1px solid ${clr}40`,
@@ -84,37 +84,47 @@ export default function ClientCard({ client, index, onClick }: Props) {
           </div>
         </div>
 
-        {/* Score Ring centered */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
+        {/* Score Ring */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "18px" }}>
           <ScoreRing score={averageScore} size={108} strokeWidth={8} />
         </div>
 
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "20px" }}>
-          {[
-            { label: "Vehicles", val: totalVehicles },
-            { label: "Scored", val: scored },
-          ].map(stat => (
-            <div key={stat.label} style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: "10px",
-              padding: "10px 14px",
-            }}>
-              <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", fontFamily: "'Inter', sans-serif", marginBottom: "4px" }}>
-                {stat.label}
-              </div>
-              <div style={{ fontSize: "20px", fontWeight: 800, color: "#f0f7f0", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
-                {stat.val}
-              </div>
-            </div>
-          ))}
+        {/* Vehicles count only */}
+        <div style={{
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "10px",
+          padding: "10px 14px",
+          marginBottom: "16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+          <div style={{
+            fontSize: "10px",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "rgba(255,255,255,0.35)",
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            Vehicles
+          </div>
+          <div style={{
+            fontSize: "22px",
+            fontWeight: 800,
+            color: "#f0f7f0",
+            fontFamily: "'Bricolage Grotesque', sans-serif",
+          }}>
+            {totalVehicles}
+          </div>
         </div>
 
-        {/* "View Details" button — like the Get In Touch button on cautio.com */}
+        {/* View Vehicles button */}
         <button className="btn-green" style={{ width: "100%", justifyContent: "center" }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" />
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="16" />
+            <line x1="8" y1="12" x2="16" y2="12" />
           </svg>
           View Vehicles
         </button>
