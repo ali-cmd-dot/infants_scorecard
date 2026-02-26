@@ -16,47 +16,32 @@ export interface DashboardData {
   totalVehicles: number;
 }
 
-// ✅ Sheet 1 — Tab: Sheet1
 const SHEET1_ID = "1LrVdz7A790qBLfmo9D6cXNQWl-L5P11XJz2rG8LaMqI";
 const SHEET1_GID = "0";
 
-// Sheet 2 — Tab: Installation MIS
 const SHEET2_ID = "1GFUotxyLDqe-2qIOOmuSlshODi6FmzFdPaQ8vtv17AU";
 const SHEET2_GID = "368130144";
 
 async function fetchSheetCSV(spreadsheetId: string, gid: string): Promise<string[][]> {
   const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
   const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch sheet ${spreadsheetId} gid ${gid}: ${res.status} ${res.statusText}`);
-  }
-  const text = await res.text();
-  return parseCSV(text);
+  if (!res.ok) throw new Error(`Sheet fetch failed: ${spreadsheetId} gid=${gid} → ${res.status}`);
+  return parseCSV(await res.text());
 }
 
 function parseCSV(text: string): string[][] {
   const rows: string[][] = [];
-  const lines = text.split("\n");
-  for (const line of lines) {
+  for (const line of text.split("\n")) {
     if (!line.trim()) continue;
     const cols: string[] = [];
-    let inQuote = false;
-    let cur = "";
+    let inQuote = false, cur = "";
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
       if (ch === '"') {
-        if (inQuote && line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else {
-          inQuote = !inQuote;
-        }
-      } else if (ch === "," && !inQuote) {
-        cols.push(cur.trim());
-        cur = "";
-      } else {
-        cur += ch;
-      }
+        if (inQuote && line[i + 1] === '"') { cur += '"'; i++; }
+        else inQuote = !inQuote;
+      } else if (ch === "," && !inQuote) { cols.push(cur.trim()); cur = ""; }
+      else cur += ch;
     }
     cols.push(cur.trim());
     rows.push(cols);
@@ -64,112 +49,86 @@ function parseCSV(text: string): string[][] {
   return rows;
 }
 
-function findColIndex(headers: string[], ...candidates: string[]): number {
-  for (const candidate of candidates) {
-    const idx = headers.findIndex(
-      (h) => h.trim().toLowerCase() === candidate.toLowerCase()
-    );
-    if (idx !== -1) return idx;
+function findCol(headers: string[], ...names: string[]): number {
+  for (const name of names) {
+    const i = headers.findIndex(h => h.trim().toLowerCase() === name.toLowerCase());
+    if (i !== -1) return i;
   }
-  for (const candidate of candidates) {
-    const idx = headers.findIndex((h) =>
-      h.trim().toLowerCase().includes(candidate.toLowerCase())
-    );
-    if (idx !== -1) return idx;
+  for (const name of names) {
+    const i = headers.findIndex(h => h.trim().toLowerCase().includes(name.toLowerCase()));
+    if (i !== -1) return i;
   }
   return -1;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const sheet1Rows = await fetchSheetCSV(SHEET1_ID, SHEET1_GID);
-  const sheet2Rows = await fetchSheetCSV(SHEET2_ID, SHEET2_GID);
+  const [s1, s2] = await Promise.all([
+    fetchSheetCSV(SHEET1_ID, SHEET1_GID),
+    fetchSheetCSV(SHEET2_ID, SHEET2_GID),
+  ]);
 
-  if (!sheet1Rows.length || !sheet2Rows.length) {
-    throw new Error("Empty sheet data");
+  if (!s1.length) throw new Error("Sheet1 is empty");
+  if (!s2.length) throw new Error("Sheet2 is empty");
+
+  // Sheet 1 columns
+  const h1 = s1[0].map(h => h.trim());
+  const vCol1 = findCol(h1, "Vehicle Number", "VehicleNumber", "vehicle no", "Vehicle No");
+  const sCol  = findCol(h1, "Scores", "Score", "scores", "Total Score", "total score");
+  if (vCol1 === -1) throw new Error(`Sheet1: No vehicle column. Got: ${h1.join(", ")}`);
+  if (sCol  === -1) throw new Error(`Sheet1: No score column. Got: ${h1.join(", ")}`);
+
+  // Build vehicle → score map
+  const scoreMap: Record<string, number | null> = {};
+  for (let i = 1; i < s1.length; i++) {
+    const v = s1[i][vCol1]?.trim();
+    if (!v) continue;
+    const raw = s1[i][sCol]?.trim();
+    const n = raw ? parseFloat(raw) : NaN;
+    scoreMap[v] = isNaN(n) ? null : n;
   }
 
-  const s1Headers = sheet1Rows[0].map((h) => h.trim());
-  const s1VehicleCol = findColIndex(s1Headers, "Vehicle Number", "VehicleNumber", "vehicle number", "vehicle no", "Vehicle No");
-  const s1ScoreCol = findColIndex(s1Headers, "Scores", "Score", "scores", "Total Score", "total score");
-
-  if (s1VehicleCol === -1)
-    throw new Error(`Sheet1: Cannot find 'Vehicle Number' column. Headers: ${s1Headers.join(", ")}`);
-  if (s1ScoreCol === -1)
-    throw new Error(`Sheet1: Cannot find 'Scores' column. Headers: ${s1Headers.join(", ")}`);
-
-  const vehicleScoreMap: Record<string, number | null> = {};
-  for (let i = 1; i < sheet1Rows.length; i++) {
-    const row = sheet1Rows[i];
-    const vNum = row[s1VehicleCol]?.trim();
-    if (!vNum) continue;
-    const rawScore = row[s1ScoreCol]?.trim();
-    const parsed = rawScore ? parseFloat(rawScore) : NaN;
-    vehicleScoreMap[vNum] = isNaN(parsed) ? null : parsed;
-  }
-
-  const s2Headers = sheet2Rows[0].map((h) => h.trim());
-  const s2VehicleCol = findColIndex(
-    s2Headers,
+  // Sheet 2 columns
+  const h2 = s2[0].map(h => h.trim());
+  const vCol2 = findCol(h2,
     "Vehicle Number/Chassis Number",
     "VehicleNumber/ChassisNumberNO.",
-    "Vehicle Number",
-    "VehicleNumber",
-    "Chassis Number",
-    "vehicle number"
+    "Vehicle Number", "VehicleNumber", "Chassis Number", "vehicle number"
   );
-  const s2ClientCol = findColIndex(
-    s2Headers,
+  const cCol = findCol(h2,
     "Running company/School",
     "Running Company/School",
-    "Running company",
-    "School",
-    "running company"
+    "Running company", "School"
   );
+  if (vCol2 === -1) throw new Error(`Sheet2: No vehicle column. Got: ${h2.join(", ")}`);
+  if (cCol  === -1) throw new Error(`Sheet2: No client column. Got: ${h2.join(", ")}`);
 
-  if (s2VehicleCol === -1)
-    throw new Error(`Sheet2: Cannot find vehicle column. Headers: ${s2Headers.join(", ")}`);
-  if (s2ClientCol === -1)
-    throw new Error(`Sheet2: Cannot find 'Running company/School' column. Headers: ${s2Headers.join(", ")}`);
-
+  // Group vehicles by client
   const clientMap: Record<string, VehicleScore[]> = {};
-  const otherVehicles: VehicleScore[] = [];
-  const matchedVehicles = new Set<string>();
+  const matched = new Set<string>();
 
-  for (let i = 1; i < sheet2Rows.length; i++) {
-    const row = sheet2Rows[i];
-    const vNum = row[s2VehicleCol]?.trim();
-    if (!vNum) continue;
-    const client = row[s2ClientCol]?.trim();
-    matchedVehicles.add(vNum);
-
-    const score = vehicleScoreMap[vNum] ?? null;
-    const vehicleScore: VehicleScore = { vehicleNumber: vNum, score };
-
-    if (!client) {
-      otherVehicles.push(vehicleScore);
-    } else {
-      if (!clientMap[client]) clientMap[client] = [];
-      clientMap[client].push(vehicleScore);
-    }
+  for (let i = 1; i < s2.length; i++) {
+    const v = s2[i][vCol2]?.trim();
+    if (!v) continue;
+    const client = s2[i][cCol]?.trim() || "Other";
+    matched.add(v);
+    if (!clientMap[client]) clientMap[client] = [];
+    clientMap[client].push({ vehicleNumber: v, score: scoreMap[v] ?? null });
   }
 
-  for (const [vNum, score] of Object.entries(vehicleScoreMap)) {
-    if (!matchedVehicles.has(vNum)) {
-      otherVehicles.push({ vehicleNumber: vNum, score });
+  // Unmatched vehicles from Sheet1 → Other
+  for (const [v, score] of Object.entries(scoreMap)) {
+    if (!matched.has(v)) {
+      if (!clientMap["Other"]) clientMap["Other"] = [];
+      clientMap["Other"].push({ vehicleNumber: v, score });
     }
-  }
-
-  if (otherVehicles.length > 0) {
-    clientMap["Other"] = otherVehicles;
   }
 
   const clients: ClientData[] = Object.entries(clientMap).map(([name, vehicles]) => {
-    const scored = vehicles.filter((v) => v.score !== null);
-    const averageScore =
-      scored.length > 0
-        ? Math.round(scored.reduce((sum, v) => sum + (v.score ?? 0), 0) / scored.length)
-        : 0;
-    return { name, vehicles, averageScore, totalVehicles: vehicles.length };
+    const scored = vehicles.filter(v => v.score !== null);
+    const avg = scored.length
+      ? Math.round(scored.reduce((s, v) => s + (v.score ?? 0), 0) / scored.length)
+      : 0;
+    return { name, vehicles, averageScore: avg, totalVehicles: vehicles.length };
   });
 
   clients.sort((a, b) => {
@@ -178,11 +137,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     return b.averageScore - a.averageScore;
   });
 
-  const totalVehicles = clients.reduce((sum, c) => sum + c.totalVehicles, 0);
-
   return {
     clients,
     lastUpdated: new Date().toISOString(),
-    totalVehicles,
+    totalVehicles: clients.reduce((s, c) => s + c.totalVehicles, 0),
   };
 }
