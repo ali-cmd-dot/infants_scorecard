@@ -2,57 +2,58 @@ import React, { useState, useEffect, useCallback } from "react";
 import Head from "next/head";
 import ClientCard from "@/components/ClientCard";
 import VehicleModal from "@/components/VehicleModal";
+import LoadingScreen from "@/components/LoadingScreen";
 import { ClientData, DashboardData } from "@/lib/sheets";
 
 export default function Dashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [data, setData]       = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
-  const [search, setSearch] = useState("");
-  const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [error, setError]     = useState<string | null>(null);
+  const [selected, setSelected] = useState<ClientData | null>(null);
+  const [search, setSearch]   = useState("");
+  const [showUI, setShowUI]   = useState(false);
+  const [updated, setUpdated] = useState("");
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/dashboard");
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.details || err.error || "Failed to fetch");
+        const e = await res.json();
+        throw new Error(e.details || e.error || "Failed");
       }
       const json: DashboardData = await res.json();
       setData(json);
-      setLastUpdated(
-        new Date(json.lastUpdated).toLocaleString("en-IN", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      );
+      setUpdated(new Date(json.lastUpdated).toLocaleString("en-IN", {
+        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+      }));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!isRefresh) {
+        // Show loading screen for at least 2s (so animation plays fully)
+        setTimeout(() => { setLoading(false); setShowUI(true); }, 2000);
+      } else {
+        setLoading(false);
+      }
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const filteredClients = data?.clients.filter((c) =>
+  const filtered = data?.clients.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const overallScore =
-    data && data.clients.length > 0
-      ? Math.round(
-          data.clients.reduce((sum, c) => sum + c.averageScore, 0) / data.clients.length
-        )
-      : 0;
+  const overall = data?.clients.length
+    ? Math.round(data.clients.reduce((s, c) => s + c.averageScore, 0) / data.clients.length)
+    : 0;
+
+  const isRefreshing = !loading && data === null;
+
+  // Show loading screen on first load
+  if (loading) return <LoadingScreen />;
 
   return (
     <>
@@ -60,426 +61,198 @@ export default function Dashboard() {
         <title>Cautio — Fleet Score Dashboard</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/cautio_shield.webp" />
-        <meta name="theme-color" content="#050e06" />
+        <meta name="theme-color" content="#0a0f0a" />
       </Head>
 
-      <div className="noise-overlay" style={{ minHeight: "100vh" }}>
-        {/* Background mesh */}
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 0,
-            background:
-              "radial-gradient(ellipse 80% 50% at 20% -10%, rgba(46,204,113,0.08) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 80% 110%, rgba(46,204,113,0.05) 0%, transparent 60%)",
-            pointerEvents: "none",
-          }}
-        />
+      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+
+        {/* Ambient background */}
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 70% 40% at 15% 0%, rgba(74,222,128,0.07) 0%, transparent 60%), radial-gradient(ellipse 50% 30% at 85% 100%, rgba(74,222,128,0.04) 0%, transparent 60%)",
+        }} />
 
         <div style={{ position: "relative", zIndex: 1 }}>
-          {/* Header */}
-          <header
-            style={{
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
-              padding: "0 40px",
-              height: "64px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              background: "rgba(5,14,6,0.8)",
-              backdropFilter: "blur(20px)",
-              position: "sticky",
-              top: 0,
-              zIndex: 100,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  background: "rgba(46,204,113,0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <img
-                  src="/cautio_shield.webp"
-                  alt="Cautio"
-                  style={{ width: "28px", height: "28px", objectFit: "contain" }}
-                />
-              </div>
+
+          {/* ── HEADER ── */}
+          <header style={{
+            position: "sticky", top: 0, zIndex: 100,
+            height: "60px",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            background: "rgba(10,15,10,0.85)",
+            backdropFilter: "blur(20px)",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "0 36px",
+          }}>
+            {/* Logo + brand */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <img src="/cautio_shield.webp" alt="Cautio" style={{ width: "30px", height: "30px", objectFit: "contain" }} />
               <div>
-                <div
-                  style={{
-                    fontFamily: "Syne, sans-serif",
-                    fontWeight: 800,
-                    fontSize: "18px",
-                    color: "#e8f5ea",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
+                <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800, fontSize: "17px", color: "#f0f7f0", letterSpacing: "-0.01em", lineHeight: 1 }}>
                   Cautio
                 </div>
-                <div
-                  style={{
-                    fontSize: "10px",
-                    color: "rgba(46,204,113,0.6)",
-                    fontFamily: "DM Sans, sans-serif",
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    lineHeight: 1,
-                    marginTop: "1px",
-                  }}
-                >
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", color: "rgba(74,222,128,0.55)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1, marginTop: "2px" }}>
                   Fleet Intelligence
                 </div>
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-              {lastUpdated && (
-                <span
-                  style={{
-                    fontSize: "12px",
-                    color: "rgba(255,255,255,0.3)",
-                    fontFamily: "DM Sans, sans-serif",
-                  }}
-                >
-                  Updated {lastUpdated}
+            {/* Right */}
+            <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+              {updated && (
+                <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter', sans-serif" }}>
+                  {updated}
                 </span>
               )}
               <button
-                onClick={fetchData}
-                disabled={loading}
-                style={{
-                  background: "rgba(46,204,113,0.1)",
-                  border: "1px solid rgba(46,204,113,0.25)",
-                  borderRadius: "8px",
-                  padding: "6px 14px",
-                  color: "#2ECC71",
-                  fontFamily: "DM Sans, sans-serif",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.5 : 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
+                className="btn-green"
+                onClick={() => fetchData(true)}
+                disabled={isRefreshing}
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  style={{ animation: loading ? "spin 1s linear infinite" : "none" }}
-                >
-                  <polyline points="1 4 1 10 7 10" />
-                  <path d="M3.51 15a9 9 0 1 0 .49-4.14" />
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  style={{ animation: isRefreshing ? "spin 1s linear infinite" : "none" }}>
+                  <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.14" />
                 </svg>
                 Refresh
               </button>
             </div>
           </header>
 
-          {/* Main */}
-          <main style={{ padding: "40px" }}>
-            <div style={{ marginBottom: "36px" }}>
-              <div
-                style={{
-                  fontSize: "12px",
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  color: "rgba(46,204,113,0.6)",
-                  fontFamily: "DM Sans, sans-serif",
-                  marginBottom: "8px",
-                }}
-              >
-                Client · Infants
-              </div>
-              <h1
-                style={{
-                  fontFamily: "Syne, sans-serif",
-                  fontWeight: 800,
-                  fontSize: "clamp(28px, 4vw, 42px)",
-                  color: "#e8f5ea",
-                  margin: "0 0 6px 0",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Fleet Score Dashboard
-              </h1>
-              <p
-                style={{
-                  color: "rgba(255,255,255,0.4)",
-                  fontFamily: "DM Sans, sans-serif",
-                  fontSize: "15px",
-                  margin: 0,
-                }}
-              >
-                Real-time safety scores across all sub-clients &amp; vehicles
-              </p>
+          {/* ── HERO ── */}
+          <div style={{ padding: "52px 36px 36px", maxWidth: "760px" }}>
+            <div style={{ fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(74,222,128,0.55)", fontFamily: "'Inter', sans-serif", marginBottom: "10px", fontWeight: 600 }}>
+              Client · Infants
             </div>
+            {/* Big headline like cautio.com */}
+            <h1 style={{
+              fontFamily: "'Bricolage Grotesque', sans-serif",
+              fontWeight: 800,
+              fontSize: "clamp(32px, 5vw, 52px)",
+              lineHeight: 1.1,
+              letterSpacing: "-0.025em",
+              color: "#f0f7f0",
+              marginBottom: "14px",
+            }}>
+              Fleet Safety{" "}
+              <span style={{ color: "#4ade80", fontStyle: "italic" }}>Scores,</span>
+              <br />At a Glance
+            </h1>
+            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", color: "rgba(240,247,240,0.45)", lineHeight: 1.6, maxWidth: "500px" }}>
+              Real-time safety performance across all sub-clients and vehicles — powered by Cautio.
+            </p>
+          </div>
 
-            {/* Loading */}
-            {loading && (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                  gap: "20px",
-                }}
-              >
-                {[...Array(6)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="loading-pulse"
-                    style={{
-                      height: "280px",
-                      borderRadius: "20px",
-                      background: "rgba(255,255,255,0.03)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      animationDelay: `${i * 0.1}s`,
-                    }}
+          {/* ── STATS BAR ── */}
+          {data && (
+            <div style={{ padding: "0 36px 32px", display: "flex", gap: "14px", flexWrap: "wrap" }}>
+              {[
+                { label: "Overall Score", val: `${overall}`, unit: "/ 100", green: true },
+                { label: "Total Vehicles", val: `${data.totalVehicles}` },
+                { label: "Sub-Clients", val: `${data.clients.filter(c => c.name !== "Other").length}` },
+                { label: "Unmatched", val: `${data.clients.find(c => c.name === "Other")?.totalVehicles ?? 0}` },
+              ].map(s => (
+                <div key={s.label} style={{
+                  background: s.green ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.02)",
+                  border: s.green ? "1px solid rgba(74,222,128,0.2)" : "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: "14px",
+                  padding: "14px 22px",
+                  minWidth: "130px",
+                }}>
+                  <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", fontFamily: "'Inter', sans-serif", marginBottom: "5px" }}>
+                    {s.label}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                    <span style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800, fontSize: "26px", color: s.green ? "#4ade80" : "#f0f7f0" }}>
+                      {s.val}
+                    </span>
+                    {s.unit && <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter', sans-serif" }}>{s.unit}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── MAIN CONTENT ── */}
+          <div style={{ padding: "0 36px 60px" }}>
+
+            {/* Error */}
+            {error && (
+              <div style={{ padding: "28px 32px", borderRadius: "16px", background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.18)", maxWidth: "560px", marginBottom: "28px" }}>
+                <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, color: "#f87171", marginBottom: "6px", fontSize: "16px" }}>⚠️ Failed to load</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.35)", marginBottom: "16px", wordBreak: "break-all" }}>{error}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.2)", marginBottom: "16px" }}>
+                  Make sure both Google Sheets are set to &quot;Anyone with link → Viewer&quot;
+                </div>
+                <button className="btn-green" onClick={() => fetchData(true)}>Retry</button>
+              </div>
+            )}
+
+            {/* Search */}
+            {data && (
+              <div style={{ position: "relative", maxWidth: "340px", marginBottom: "24px" }}>
+                <svg style={{ position: "absolute", left: "13px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.25)" }}
+                  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search sub-clients..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: "10px",
+                    padding: "9px 14px 9px 38px",
+                    color: "#f0f7f0",
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: "13px",
+                    transition: "border-color 0.2s",
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Cards grid */}
+            {data && (
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: "18px",
+              }}>
+                {filtered?.map((client, i) => (
+                  <ClientCard
+                    key={client.name}
+                    client={client}
+                    index={i}
+                    onClick={() => setSelected(client)}
                   />
                 ))}
               </div>
             )}
 
-            {/* Error */}
-            {!loading && error && (
-              <div
-                style={{
-                  padding: "40px",
-                  borderRadius: "16px",
-                  background: "rgba(231,76,60,0.08)",
-                  border: "1px solid rgba(231,76,60,0.2)",
-                  textAlign: "center",
-                  maxWidth: "600px",
-                  margin: "0 auto",
-                }}
-              >
-                <div style={{ fontSize: "40px", marginBottom: "12px" }}>⚠️</div>
-                <h3
-                  style={{
-                    fontFamily: "Syne, sans-serif",
-                    color: "#E74C3C",
-                    margin: "0 0 8px 0",
-                    fontSize: "18px",
-                  }}
-                >
-                  Failed to load data
-                </h3>
-                <p
-                  style={{
-                    color: "rgba(255,255,255,0.4)",
-                    fontFamily: "DM Sans, sans-serif",
-                    fontSize: "13px",
-                    margin: "0 0 8px 0",
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {error}
-                </p>
-                <p
-                  style={{
-                    color: "rgba(255,255,255,0.3)",
-                    fontFamily: "DM Sans, sans-serif",
-                    fontSize: "12px",
-                    margin: "0 0 20px 0",
-                  }}
-                >
-                  Make sure both Google Sheets are set to &quot;Anyone with link can view&quot;
-                </p>
-                <button
-                  onClick={fetchData}
-                  style={{
-                    background: "rgba(231,76,60,0.15)",
-                    border: "1px solid rgba(231,76,60,0.3)",
-                    borderRadius: "8px",
-                    padding: "8px 20px",
-                    color: "#E74C3C",
-                    fontFamily: "DM Sans, sans-serif",
-                    cursor: "pointer",
-                  }}
-                >
-                  Try again
-                </button>
+            {filtered?.length === 0 && (
+              <div style={{ padding: "60px", textAlign: "center", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter', sans-serif", fontSize: "14px" }}>
+                No results for &quot;{search}&quot;
               </div>
             )}
-
-            {/* Data */}
-            {!loading && !error && data && (
-              <>
-                {/* Stats */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                    gap: "16px",
-                    marginBottom: "32px",
-                  }}
-                >
-                  {[
-                    { label: "Overall Score", value: `${overallScore}`, unit: "/ 100", highlight: true },
-                    { label: "Total Vehicles", value: `${data.totalVehicles}`, unit: "" },
-                    { label: "Sub-Clients", value: `${data.clients.filter((c) => c.name !== "Other").length}`, unit: "" },
-                    { label: "Unmatched", value: `${data.clients.find((c) => c.name === "Other")?.totalVehicles ?? 0}`, unit: "" },
-                  ].map((stat) => (
-                    <div
-                      key={stat.label}
-                      style={{
-                        background: stat.highlight
-                          ? "linear-gradient(135deg, rgba(46,204,113,0.1) 0%, rgba(46,204,113,0.05) 100%)"
-                          : "rgba(255,255,255,0.02)",
-                        border: stat.highlight
-                          ? "1px solid rgba(46,204,113,0.25)"
-                          : "1px solid rgba(255,255,255,0.06)",
-                        borderRadius: "14px",
-                        padding: "16px 20px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          color: "rgba(255,255,255,0.4)",
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          fontFamily: "DM Sans, sans-serif",
-                          marginBottom: "6px",
-                        }}
-                      >
-                        {stat.label}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                        <span
-                          style={{
-                            fontFamily: "Syne, sans-serif",
-                            fontWeight: 800,
-                            fontSize: "28px",
-                            color: stat.highlight ? "#2ECC71" : "#e8f5ea",
-                          }}
-                        >
-                          {stat.value}
-                        </span>
-                        {stat.unit && (
-                          <span
-                            style={{
-                              fontSize: "13px",
-                              color: "rgba(255,255,255,0.3)",
-                              fontFamily: "DM Sans, sans-serif",
-                            }}
-                          >
-                            {stat.unit}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Search */}
-                <div style={{ marginBottom: "24px", position: "relative", maxWidth: "360px" }}>
-                  <svg
-                    style={{
-                      position: "absolute",
-                      left: "14px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "rgba(255,255,255,0.3)",
-                    }}
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Search sub-clients..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: "rgba(255,255,255,0.03)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: "10px",
-                      padding: "10px 14px 10px 42px",
-                      color: "#e8f5ea",
-                      fontFamily: "DM Sans, sans-serif",
-                      fontSize: "14px",
-                      outline: "none",
-                    }}
-                  />
-                </div>
-
-                {/* Cards */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                    gap: "20px",
-                  }}
-                >
-                  {filteredClients?.map((client, i) => (
-                    <ClientCard
-                      key={client.name}
-                      client={client}
-                      index={i}
-                      onClick={() => setSelectedClient(client)}
-                    />
-                  ))}
-                </div>
-
-                {filteredClients?.length === 0 && (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "60px",
-                      color: "rgba(255,255,255,0.3)",
-                      fontFamily: "DM Sans, sans-serif",
-                    }}
-                  >
-                    No sub-clients match &quot;{search}&quot;
-                  </div>
-                )}
-              </>
-            )}
-          </main>
+          </div>
 
           {/* Footer */}
-          <footer
-            style={{
-              borderTop: "1px solid rgba(255,255,255,0.04)",
-              padding: "20px 40px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>
+          <footer style={{ borderTop: "1px solid rgba(255,255,255,0.04)", padding: "18px 36px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.18)" }}>
               © {new Date().getFullYear()} Cautio · Fleet Intelligence Platform
             </span>
-            <span style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "rgba(46,204,113,0.4)" }}>
+            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(74,222,128,0.35)" }}>
               cautio.com
             </span>
           </footer>
         </div>
       </div>
 
-      {selectedClient && (
-        <VehicleModal client={selectedClient} onClose={() => setSelectedClient(null)} />
-      )}
+      {/* Vehicle Modal */}
+      {selected && <VehicleModal client={selected} onClose={() => setSelected(null)} />}
     </>
   );
 }
