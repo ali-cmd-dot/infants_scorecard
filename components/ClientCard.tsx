@@ -40,8 +40,14 @@ export default function ClientCard({ client, index, onClick }: Props) {
       }} />
 
       <div style={{ padding: "22px 22px 18px" }}>
+
         {/* Header row */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "18px",
+        }}>
           <div>
             <div style={{
               fontSize: "10px",
@@ -52,7 +58,7 @@ export default function ClientCard({ client, index, onClick }: Props) {
               fontWeight: 600,
               marginBottom: "5px",
             }}>
-              {name === "Other" ? "Unmatched" : "Sub-Client"}
+              Sub-Client
             </div>
             <h3 style={{
               fontFamily: "'Bricolage Grotesque', sans-serif",
@@ -67,7 +73,6 @@ export default function ClientCard({ client, index, onClick }: Props) {
               {name}
             </h3>
           </div>
-          {/* Score label badge */}
           <div style={{
             background: `${clr}18`,
             border: `1px solid ${clr}40`,
@@ -86,37 +91,40 @@ export default function ClientCard({ client, index, onClick }: Props) {
 
         {/* Score Ring */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "18px" }}>
-          <ScoreRing score={averageScore} size={108} strokeWidth={8} />
+          <ScoreRing score={averageScore} size={110} strokeWidth={8} />
         </div>
 
-        {/* Vehicles count only */}
+        {/* Vehicles row — full width, label left, number right */}
         <div style={{
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(255,255,255,0.06)",
           borderRadius: "10px",
-          padding: "10px 14px",
-          marginBottom: "16px",
+          padding: "11px 16px",
+          marginBottom: "14px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          width: "100%",
         }}>
-          <div style={{
+          <span style={{
             fontSize: "10px",
             textTransform: "uppercase",
-            letterSpacing: "0.08em",
+            letterSpacing: "0.1em",
             color: "rgba(255,255,255,0.35)",
             fontFamily: "'Inter', sans-serif",
+            fontWeight: 600,
           }}>
             Vehicles
-          </div>
-          <div style={{
+          </span>
+          <span style={{
             fontSize: "22px",
             fontWeight: 800,
             color: "#f0f7f0",
             fontFamily: "'Bricolage Grotesque', sans-serif",
+            lineHeight: 1,
           }}>
             {totalVehicles}
-          </div>
+          </span>
         </div>
 
         {/* View Vehicles button */}
