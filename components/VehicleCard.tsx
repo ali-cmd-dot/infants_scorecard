@@ -33,95 +33,60 @@ export default function VehicleCard({ vehicle, index, onClick }: Props) {
       className="scorecard card-anim"
       style={{
         animationDelay: `${index * 0.04}s`,
-        padding: 0,
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        cursor: "pointer",
+        padding: 0, height: "100%",
+        display: "flex", flexDirection: "column", cursor: "pointer",
       }}
       onClick={onClick}
     >
       {/* Accent line */}
       <div style={{
-        height: "3px",
-        flexShrink: 0,
+        height: "3px", flexShrink: 0,
         background: `linear-gradient(90deg, transparent, ${clr}70, transparent)`,
         borderRadius: "20px 20px 0 0",
       }} />
 
-      <div style={{ padding: "16px 16px 14px", display: "flex", flexDirection: "column", flex: 1 }}>
-
-        {/* Header row: client + badge */}
+      <div style={{ padding: "16px 16px 20px", display: "flex", flexDirection: "column", flex: 1 }}>
+        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
           <div>
             <div style={{
-              fontSize: "9px",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "rgba(74,222,128,0.5)",
-              fontFamily: "'Inter', sans-serif",
-              fontWeight: 600,
-              marginBottom: "3px",
+              fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase",
+              color: "rgba(74,222,128,0.5)", fontFamily: "'Inter', sans-serif", fontWeight: 600, marginBottom: "3px",
             }}>
               {clientName}
             </div>
             <div style={{
-              fontFamily: "'Bricolage Grotesque', sans-serif",
-              fontWeight: 700,
-              fontSize: "15px",
-              color: "#f0f7f0",
-              letterSpacing: "0.02em",
+              fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700,
+              fontSize: "15px", color: "#f0f7f0", letterSpacing: "0.02em",
             }}>
               {vehicleNumber}
             </div>
           </div>
           <div style={{
-            background: `${clr}18`,
-            border: `1px solid ${clr}35`,
-            borderRadius: "7px",
-            padding: "3px 9px",
-            fontSize: "10px",
-            fontWeight: 700,
-            color: clr,
-            fontFamily: "'Inter', sans-serif",
-            flexShrink: 0,
+            background: `${clr}18`, border: `1px solid ${clr}35`,
+            borderRadius: "7px", padding: "3px 9px",
+            fontSize: "10px", fontWeight: 700, color: clr,
+            fontFamily: "'Inter', sans-serif", flexShrink: 0,
           }}>
             {scoreLabel(score)}
           </div>
         </div>
 
-        {/* Score as plain text */}
-        <div style={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: "5px",
-          marginBottom: "12px",
-          paddingLeft: "2px",
-        }}>
+        {/* Score as text */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: "5px", marginBottom: "14px", paddingLeft: "2px" }}>
           <span style={{
-            fontFamily: "'Bricolage Grotesque', sans-serif",
-            fontWeight: 800,
-            fontSize: "38px",
-            color: clr,
-            lineHeight: 1,
-            letterSpacing: "-0.02em",
+            fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800,
+            fontSize: "40px", color: clr, lineHeight: 1, letterSpacing: "-0.02em",
           }}>
             {score !== null ? score : "—"}
           </span>
-          <span style={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: "12px",
-            color: "rgba(255,255,255,0.3)",
-            fontWeight: 500,
-            marginBottom: "2px",
-          }}>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>
             / 100
           </span>
         </div>
 
-        {/* Donut chart — card mode */}
+        {/* Donut */}
         <DonutAlertChart alerts={alerts} card={true} />
-
       </div>
     </div>
   );
