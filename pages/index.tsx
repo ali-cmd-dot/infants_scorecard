@@ -56,7 +56,9 @@ export default function Dashboard() {
       <Head>
         <title>Cautio — Fleet Score Dashboard</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/cautio_shield.webp" />
+        {/* Use PNG for favicon — webp not reliable across browsers */}
+        <link rel="icon" type="image/png" href="/cautio_shield.webp" />
+        <link rel="shortcut icon" href="/cautio_shield.webp" />
         <meta name="theme-color" content="#0a0f0a" />
       </Head>
 
@@ -82,15 +84,13 @@ export default function Dashboard() {
             justifyContent: "space-between",
             padding: "0 32px",
           }}>
-
-            {/* ── LOGO ── */}
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <img
                 src="/cautio_shield.webp"
                 alt="Cautio"
                 style={{
-                  width: "38px",
-                  height: "38px",
+                  width: "36px",
+                  height: "36px",
                   objectFit: "contain",
                   display: "block",
                   flexShrink: 0,
@@ -103,7 +103,7 @@ export default function Dashboard() {
                   fontSize: "18px",
                   color: "#f0f7f0",
                   letterSpacing: "-0.01em",
-                  lineHeight: "1.15",
+                  lineHeight: "1.2",
                 }}>
                   Cautio
                 </div>
@@ -113,14 +113,13 @@ export default function Dashboard() {
                   color: "rgba(74,222,128,0.6)",
                   letterSpacing: "0.13em",
                   textTransform: "uppercase",
-                  lineHeight: "1.1",
+                  lineHeight: "1.2",
                 }}>
                   Fleet Intelligence
                 </div>
               </div>
             </div>
 
-            {/* Right */}
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               {updated && (
                 <span style={{
@@ -241,7 +240,6 @@ export default function Dashboard() {
           {/* ── CONTENT ── */}
           <div style={{ padding: "0 32px 60px" }}>
 
-            {/* Error */}
             {error && (
               <div style={{
                 padding: "24px 28px",
@@ -316,12 +314,13 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Cards */}
+            {/* ── CARDS GRID — equal height rows ── */}
             {data && (
               <div style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fill, minmax(255px, 1fr))",
                 gap: "16px",
+                alignItems: "stretch",       /* all cards same height in each row */
               }}>
                 {filtered?.map((client, i) => (
                   <ClientCard
