@@ -29,26 +29,39 @@ export default function ClientCard({ client, index, onClick }: Props) {
   return (
     <div
       className="scorecard card-anim"
-      style={{ animationDelay: `${index * 0.07}s`, padding: "0" }}
+      style={{
+        animationDelay: `${index * 0.07}s`,
+        padding: "0",
+        height: "100%",              /* stretch to grid row height */
+        display: "flex",
+        flexDirection: "column",
+      }}
       onClick={onClick}
     >
       {/* Top accent line */}
       <div style={{
         height: "3px",
+        flexShrink: 0,
         background: `linear-gradient(90deg, transparent, ${clr}70, transparent)`,
         borderRadius: "20px 20px 0 0",
       }} />
 
-      <div style={{ padding: "22px 22px 18px" }}>
+      {/* Card body — flex column so button sticks to bottom */}
+      <div style={{
+        padding: "22px 22px 18px",
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+      }}>
 
-        {/* Header row */}
+        {/* Header */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          marginBottom: "18px",
+          marginBottom: "16px",
         }}>
-          <div>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: "10px" }}>
             <div style={{
               fontSize: "10px",
               letterSpacing: "0.14em",
@@ -56,7 +69,7 @@ export default function ClientCard({ client, index, onClick }: Props) {
               color: "rgba(74,222,128,0.55)",
               fontFamily: "'Inter', sans-serif",
               fontWeight: 600,
-              marginBottom: "5px",
+              marginBottom: "4px",
             }}>
               Sub-Client
             </div>
@@ -67,7 +80,6 @@ export default function ClientCard({ client, index, onClick }: Props) {
               color: "#f0f7f0",
               lineHeight: 1.25,
               wordBreak: "break-word",
-              maxWidth: "155px",
               margin: 0,
             }}>
               {name}
@@ -84,27 +96,30 @@ export default function ClientCard({ client, index, onClick }: Props) {
             fontFamily: "'Inter', sans-serif",
             letterSpacing: "0.04em",
             flexShrink: 0,
+            whiteSpace: "nowrap",
           }}>
             {scoreLabel(averageScore)}
           </div>
         </div>
 
-        {/* Score Ring */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "18px" }}>
+        {/* Score Ring — centered */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
           <ScoreRing score={averageScore} size={110} strokeWidth={8} />
         </div>
 
-        {/* Vehicles row — full width, label left, number right */}
+        {/* Spacer — pushes vehicles + button to bottom */}
+        <div style={{ flex: 1 }} />
+
+        {/* Vehicles count */}
         <div style={{
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(255,255,255,0.06)",
           borderRadius: "10px",
           padding: "11px 16px",
-          marginBottom: "14px",
+          marginBottom: "12px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          width: "100%",
         }}>
           <span style={{
             fontSize: "10px",
@@ -127,8 +142,11 @@ export default function ClientCard({ client, index, onClick }: Props) {
           </span>
         </div>
 
-        {/* View Vehicles button */}
-        <button className="btn-green" style={{ width: "100%", justifyContent: "center" }}>
+        {/* View button */}
+        <button
+          className="btn-green"
+          style={{ width: "100%", justifyContent: "center" }}
+        >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="16" />
