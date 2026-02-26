@@ -2,287 +2,117 @@ import React, { useEffect } from "react";
 import { ClientData, VehicleScore } from "@/lib/sheets";
 import ScoreRing from "./ScoreRing";
 
-interface VehicleModalProps {
-  client: ClientData | null;
-  onClose: () => void;
+interface Props { client: ClientData | null; onClose: () => void; }
+
+function clr(s: number | null) {
+  if (s === null) return "rgba(255,255,255,0.2)";
+  if (s >= 80) return "#4ade80";
+  if (s >= 60) return "#86efac";
+  if (s >= 40) return "#fde047";
+  return "#f87171";
 }
 
-function getScoreColor(score: number | null): string {
-  if (score === null) return "rgba(255,255,255,0.3)";
-  if (score >= 80) return "#2ECC71";
-  if (score >= 60) return "#82E0AA";
-  if (score >= 40) return "#F7DC6F";
-  return "#E74C3C";
-}
-
-function VehicleRow({ vehicle, index }: { vehicle: VehicleScore; index: number }) {
-  const color = getScoreColor(vehicle.score);
-  const score = vehicle.score;
-
+function VehicleRow({ v, i }: { v: VehicleScore; i: number }) {
+  const c = clr(v.score);
   return (
     <div
-      className="fade-in-up"
+      className="card-anim"
       style={{
-        animationDelay: `${index * 0.03}s`,
-        animationFillMode: "both",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "12px 16px",
+        animationDelay: `${i * 0.025}s`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "11px 16px",
         borderRadius: "10px",
         background: "rgba(255,255,255,0.02)",
         border: "1px solid rgba(255,255,255,0.05)",
-        marginBottom: "8px",
+        marginBottom: "7px",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        <div
-          style={{
-            width: "8px",
-            height: "8px",
-            borderRadius: "50%",
-            background: color,
-            boxShadow: `0 0 8px ${color}`,
-            flexShrink: 0,
-          }}
-        />
-        <span
-          style={{
-            fontFamily: "DM Sans, sans-serif",
-            fontWeight: 500,
-            color: "#e8f5ea",
-            fontSize: "14px",
-            letterSpacing: "0.02em",
-          }}
-        >
-          {vehicle.vehicleNumber}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: c, boxShadow: `0 0 6px ${c}`, flexShrink: 0 }} />
+        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13.5px", fontWeight: 500, color: "#f0f7f0", letterSpacing: "0.01em" }}>
+          {v.vehicleNumber}
         </span>
       </div>
-
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        {score !== null ? (
+        {v.score !== null ? (
           <>
-            <div
-              style={{
-                width: "80px",
-                height: "4px",
-                background: "rgba(255,255,255,0.08)",
-                borderRadius: "2px",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${score}%`,
-                  background: color,
-                  borderRadius: "2px",
-                  transition: "width 1s ease-out",
-                }}
-              />
+            <div style={{ width: "72px", height: "3px", background: "rgba(255,255,255,0.07)", borderRadius: "2px", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${v.score}%`, background: c, transition: "width 1s ease-out" }} />
             </div>
-            <span
-              style={{
-                fontFamily: "Syne, sans-serif",
-                fontWeight: 700,
-                color: color,
-                fontSize: "15px",
-                minWidth: "36px",
-                textAlign: "right",
-              }}
-            >
-              {score}
+            <span style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800, fontSize: "14px", color: c, minWidth: "32px", textAlign: "right" }}>
+              {v.score}
             </span>
           </>
         ) : (
-          <span
-            style={{
-              fontFamily: "DM Sans, sans-serif",
-              color: "rgba(255,255,255,0.25)",
-              fontSize: "13px",
-              fontStyle: "italic",
-            }}
-          >
-            No data
-          </span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.2)", fontStyle: "italic" }}>No data</span>
         )}
       </div>
     </div>
   );
 }
 
-export default function VehicleModal({ client, onClose }: VehicleModalProps) {
+export default function VehicleModal({ client, onClose }: Props) {
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
+    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
   }, [onClose]);
 
   if (!client) return null;
 
-  const scoredVehicles = client.vehicles.filter((v) => v.score !== null);
-  const unscoredVehicles = client.vehicles.filter((v) => v.score === null);
-  const sortedScored = [...scoredVehicles].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const scored = [...client.vehicles.filter(v => v.score !== null)].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const unscored = client.vehicles.filter(v => v.score === null);
 
   return (
-    <div
-      className="modal-backdrop"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        style={{
-          background: "linear-gradient(135deg, #0d1a0f 0%, #071009 100%)",
-          border: "1px solid rgba(46,204,113,0.2)",
-          borderRadius: "24px",
-          width: "100%",
-          maxWidth: "600px",
-          maxHeight: "85vh",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(46,204,113,0.1)",
-        }}
-      >
+    <div className="modal-bg" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-box">
         {/* Header */}
-        <div
-          style={{
-            padding: "24px 28px 20px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            <ScoreRing score={client.averageScore} size={72} strokeWidth={5} fontSize={16} />
+        <div style={{ padding: "24px 26px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
+            <ScoreRing score={client.averageScore} size={68} strokeWidth={5} />
             <div>
-              <div
-                style={{
-                  fontSize: "11px",
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: "rgba(46,204,113,0.6)",
-                  fontFamily: "DM Sans, sans-serif",
-                  marginBottom: "4px",
-                }}
-              >
+              <div style={{ fontSize: "10px", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(74,222,128,0.55)", fontFamily: "'Inter', sans-serif", marginBottom: "3px" }}>
                 Sub-Client · Infants
               </div>
-              <h2
-                style={{
-                  fontFamily: "Syne, sans-serif",
-                  fontWeight: 800,
-                  fontSize: "22px",
-                  color: "#e8f5ea",
-                  margin: "0 0 4px 0",
-                }}
-              >
+              <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800, fontSize: "20px", color: "#f0f7f0", marginBottom: "2px" }}>
                 {client.name}
               </h2>
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "rgba(255,255,255,0.4)",
-                  fontFamily: "DM Sans, sans-serif",
-                }}
-              >
-                {client.totalVehicles} vehicle{client.totalVehicles !== 1 ? "s" : ""} &nbsp;·&nbsp; {scoredVehicles.length} scored
+              <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", fontFamily: "'Inter', sans-serif" }}>
+                {client.totalVehicles} vehicles &nbsp;·&nbsp; {scored.length} scored
               </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "none",
-              borderRadius: "8px",
-              width: "32px",
-              height: "32px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              color: "rgba(255,255,255,0.5)",
-              flexShrink: 0,
-            }}
+            style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: "8px", width: "30px", height: "30px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(255,255,255,0.4)", flexShrink: 0 }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
-        {/* Vehicle list */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px 24px" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "0 16px 10px",
-              fontSize: "11px",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.3)",
-              fontFamily: "DM Sans, sans-serif",
-            }}
-          >
-            <span>Vehicle Number</span>
-            <span>Score / 100</span>
+        {/* List */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 26px 24px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "0 16px 8px", fontSize: "10px", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter', sans-serif" }}>
+            <span>Vehicle No.</span><span>Score / 100</span>
           </div>
 
-          {sortedScored.map((v, i) => (
-            <VehicleRow key={v.vehicleNumber} vehicle={v} index={i} />
-          ))}
+          {scored.map((v, i) => <VehicleRow key={v.vehicleNumber} v={v} i={i} />)}
 
-          {unscoredVehicles.length > 0 && (
+          {unscored.length > 0 && (
             <>
-              {sortedScored.length > 0 && (
-                <div
-                  style={{
-                    borderTop: "1px solid rgba(255,255,255,0.05)",
-                    margin: "16px 0 12px",
-                    paddingTop: "12px",
-                    fontSize: "11px",
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.2)",
-                    fontFamily: "DM Sans, sans-serif",
-                  }}
-                >
+              {scored.length > 0 && (
+                <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.2)", fontFamily: "'Inter', sans-serif", padding: "10px 0 8px", borderTop: "1px solid rgba(255,255,255,0.04)", margin: "10px 0 0" }}>
                   No Score Data
                 </div>
               )}
-              {unscoredVehicles.map((v, i) => (
-                <VehicleRow key={v.vehicleNumber} vehicle={v} index={sortedScored.length + i} />
-              ))}
+              {unscored.map((v, i) => <VehicleRow key={v.vehicleNumber} v={v} i={scored.length + i} />)}
             </>
           )}
 
           {client.vehicles.length === 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "40px",
-                color: "rgba(255,255,255,0.3)",
-                fontFamily: "DM Sans, sans-serif",
-              }}
-            >
-              No vehicles found
-            </div>
+            <div style={{ textAlign: "center", padding: "40px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter', sans-serif", fontSize: "14px" }}>No vehicles</div>
           )}
         </div>
       </div>
