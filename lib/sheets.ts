@@ -50,10 +50,12 @@ function parseCSV(text: string): string[][] {
 }
 
 function findCol(headers: string[], ...names: string[]): number {
+  // Exact match first
   for (const name of names) {
     const i = headers.findIndex(h => h.trim().toLowerCase() === name.toLowerCase());
     if (i !== -1) return i;
   }
+  // Fuzzy contains
   for (const name of names) {
     const i = headers.findIndex(h => h.trim().toLowerCase().includes(name.toLowerCase()));
     if (i !== -1) return i;
@@ -70,24 +72,25 @@ export async function getDashboardData(): Promise<DashboardData> {
   if (!s1.length) throw new Error("Sheet1 is empty");
   if (!s2.length) throw new Error("Sheet2 is empty");
 
-  // Sheet 1 columns
+  // ── SHEET 1: Vehicle Number + Score (PRIMARY SOURCE) ──
   const h1 = s1[0].map(h => h.trim());
   const vCol1 = findCol(h1, "Vehicle Number", "VehicleNumber", "vehicle no", "Vehicle No");
   const sCol  = findCol(h1, "Scores", "Score", "scores", "Total Score", "total score");
   if (vCol1 === -1) throw new Error(`Sheet1: No vehicle column. Got: ${h1.join(", ")}`);
   if (sCol  === -1) throw new Error(`Sheet1: No score column. Got: ${h1.join(", ")}`);
 
-  // Build vehicle → score map
-  const scoreMap: Record<string, number | null> = {};
+  // Build list of all vehicles from Sheet1 with their scores
+  // Sheet1 is the MASTER list — only these vehicles will appear in dashboard
+  const sheet1Vehicles: { vehicleNumber: string; score: number | null }[] = [];
   for (let i = 1; i < s1.length; i++) {
     const v = s1[i][vCol1]?.trim();
     if (!v) continue;
     const raw = s1[i][sCol]?.trim();
     const n = raw ? parseFloat(raw) : NaN;
-    scoreMap[v] = isNaN(n) ? null : n;
+    sheet1Vehicles.push({ vehicleNumber: v, score: isNaN(n) ? null : n });
   }
 
-  // Sheet 2 columns
+  // ── SHEET 2: Vehicle → Running company/School mapping ──
   const h2 = s2[0].map(h => h.trim());
   const vCol2 = findCol(h2,
     "Vehicle Number/Chassis Number",
@@ -102,27 +105,27 @@ export async function getDashboardData(): Promise<DashboardData> {
   if (vCol2 === -1) throw new Error(`Sheet2: No vehicle column. Got: ${h2.join(", ")}`);
   if (cCol  === -1) throw new Error(`Sheet2: No client column. Got: ${h2.join(", ")}`);
 
-  // Group vehicles by client
-  const clientMap: Record<string, VehicleScore[]> = {};
-  const matched = new Set<string>();
-
+  // Build lookup map: vehicleNumber → client name (from Sheet2)
+  const vehicleToClient: Record<string, string> = {};
   for (let i = 1; i < s2.length; i++) {
     const v = s2[i][vCol2]?.trim();
     if (!v) continue;
-    const client = s2[i][cCol]?.trim() || "Other";
-    matched.add(v);
+    const client = s2[i][cCol]?.trim();
+    if (client) vehicleToClient[v] = client;
+  }
+
+  // ── COMBINE: For each Sheet1 vehicle, look up client from Sheet2 ──
+  const clientMap: Record<string, VehicleScore[]> = {};
+
+  for (const { vehicleNumber, score } of sheet1Vehicles) {
+    // Look up which sub-client this vehicle belongs to
+    const client = vehicleToClient[vehicleNumber] || "Other";
+
     if (!clientMap[client]) clientMap[client] = [];
-    clientMap[client].push({ vehicleNumber: v, score: scoreMap[v] ?? null });
+    clientMap[client].push({ vehicleNumber, score });
   }
 
-  // Unmatched vehicles from Sheet1 → Other
-  for (const [v, score] of Object.entries(scoreMap)) {
-    if (!matched.has(v)) {
-      if (!clientMap["Other"]) clientMap["Other"] = [];
-      clientMap["Other"].push({ vehicleNumber: v, score });
-    }
-  }
-
+  // ── BUILD CLIENT DATA with average scores ──
   const clients: ClientData[] = Object.entries(clientMap).map(([name, vehicles]) => {
     const scored = vehicles.filter(v => v.score !== null);
     const avg = scored.length
@@ -131,6 +134,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     return { name, vehicles, averageScore: avg, totalVehicles: vehicles.length };
   });
 
+  // Sort: Other last, rest by score descending
   clients.sort((a, b) => {
     if (a.name === "Other") return 1;
     if (b.name === "Other") return -1;
@@ -140,6 +144,17 @@ export async function getDashboardData(): Promise<DashboardData> {
   return {
     clients,
     lastUpdated: new Date().toISOString(),
-    totalVehicles: clients.reduce((s, c) => s + c.totalVehicles, 0),
+    totalVehicles: sheet1Vehicles.length, // exact count from Sheet1
   };
 }
+```
+
+---
+
+**Logic summary in simple words:**
+```
+Sheet1 (master list)          Sheet2 (mapping)
+─────────────────────         ─────────────────────────
+MH01AB1234  → score: 82  →   MH01AB1234 → "Sunshine School"
+MH01AB5678  → score: 67  →   MH01AB5678 → "Green Valley"
+MH01AB9999  → score: 45  →   ❌ not found → "Other"
