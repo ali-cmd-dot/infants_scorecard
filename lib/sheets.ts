@@ -38,7 +38,7 @@ export interface DashboardData {
 
 // ✅ Updated Sheet 1 — Tab: Summary
 const SHEET1_ID = "1FCHtmrcuPVXDRbmgMbJI8TSP_wondoE1ElZANVJnHag";
-const SHEET1_SUMMARY_GID = "1184598582";
+const SHEET1_SUMMARY_GID = "154520238";
 
 // Sheet 2 — Tab: Installation MIS
 const SHEET2_ID = "1GFUotxyLDqe-2qIOOmuSlshODi6FmzFdPaQ8vtv17AU";
@@ -46,7 +46,7 @@ const SHEET2_GID = "368130144";
 
 // Alerts tab is in Sheet 1 — need to find its GID
 // The Alerts tab GID — update this after checking your sheet URL
-const SHEET1_ALERTS_GID = "0"; // ← REPLACE with actual GID of 'Alerts' tab
+const SHEET1_ALERTS_GID = "1184598582"; // ← REPLACE with actual GID of 'Alerts' tab
 
 async function fetchSheetCSV(spreadsheetId: string, gid: string): Promise<string[][]> {
   const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
