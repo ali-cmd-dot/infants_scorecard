@@ -13,7 +13,7 @@ function color(s: number) {
   return "#f87171";
 }
 
-export default function ScoreRing({ score, size = 100, strokeWidth = 7 }: Props) {
+export default function ScoreRing({ score, size = 110, strokeWidth = 8 }: Props) {
   const r = (size - strokeWidth * 2) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ - (score / 100) * circ;
@@ -22,7 +22,14 @@ export default function ScoreRing({ score, size = 100, strokeWidth = 7 }: Props)
 
   return (
     <svg width={size} height={size} style={{ transform: "rotate(-90deg)", display: "block" }}>
-      <circle cx={c} cy={c} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} />
+      {/* Track */}
+      <circle
+        cx={c} cy={c} r={r}
+        fill="none"
+        stroke="rgba(255,255,255,0.07)"
+        strokeWidth={strokeWidth}
+      />
+      {/* Progress */}
       <circle
         cx={c} cy={c} r={r}
         fill="none"
@@ -36,15 +43,16 @@ export default function ScoreRing({ score, size = 100, strokeWidth = 7 }: Props)
           strokeDashoffset: offset,
         }}
       />
-      {/* Big score number */}
+      {/* Score number — big and bold */}
       <text
-        x={c} y={c - size * 0.06}
+        x={c}
+        y={c - 8}
         textAnchor="middle"
         dominantBaseline="central"
         style={{
           transform: `rotate(90deg)`,
           transformOrigin: `${c}px ${c}px`,
-          fontSize: `${size * 0.26}px`,
+          fontSize: `${Math.round(size * 0.27)}px`,
           fontWeight: 800,
           fill: clr,
           fontFamily: "'Bricolage Grotesque', sans-serif",
@@ -52,17 +60,20 @@ export default function ScoreRing({ score, size = 100, strokeWidth = 7 }: Props)
       >
         {score}
       </text>
-      {/* /100 below */}
+      {/* /100 label — clearly visible */}
       <text
-        x={c} y={c + size * 0.2}
+        x={c}
+        y={c + size * 0.22}
         textAnchor="middle"
         dominantBaseline="central"
         style={{
           transform: `rotate(90deg)`,
           transformOrigin: `${c}px ${c}px`,
-          fontSize: `${size * 0.1}px`,
-          fill: "rgba(255,255,255,0.35)",
+          fontSize: `${Math.round(size * 0.11)}px`,
+          fontWeight: 500,
+          fill: "rgba(240,247,240,0.55)",
           fontFamily: "'Inter', sans-serif",
+          letterSpacing: "0.03em",
         }}
       >
         / 100
