@@ -14,8 +14,8 @@ interface Props {
   alerts: AlertSummary;
   title?: string;
   titleCenter?: boolean;
-  compact?: boolean;  // modal with leader lines
-  card?: boolean;     // inside cards — same style as full, scaled to fit
+  compact?: boolean; // modal
+  card?: boolean;    // inside card
 }
 
 function fmt(n: number): string {
@@ -52,16 +52,12 @@ function donutSegment(
   ].join(" ");
 }
 
-// ── Shared SVG donut renderer ──────────────────────────────────────────────
-interface DonutSVGProps {
-  alerts: AlertSummary;
+interface DonutConfig {
   W: number; H: number;
   CX: number; CY: number;
   OR: number; IR: number;
-  // label line reach beyond OR
-  lineReach: number;
-  // max X distance from CX for label end
-  labelReach: number;
+  lineReach: number;  // how far leader line goes beyond OR
+  labelOffset: number; // extra horizontal offset for label end
   fontSize: number;
   pctFontSize: number;
   dotR: number;
@@ -70,15 +66,11 @@ interface DonutSVGProps {
   showLegend?: boolean;
 }
 
-function DonutSVG({
-  alerts, W, H, CX, CY, OR, IR,
-  lineReach, labelReach,
-  fontSize, pctFontSize, dotR,
-  centerFontSize, subFontSize,
-  showLegend,
-}: DonutSVGProps) {
-  const total = alerts.totalAlerts || 0;
+function DonutCore({ alerts, cfg }: { alerts: AlertSummary; cfg: DonutConfig }) {
+  const { W, H, CX, CY, OR, IR, lineReach, labelOffset, fontSize, pctFontSize,
+          dotR, centerFontSize, subFontSize, showLegend } = cfg;
 
+  const total = alerts.totalAlerts || 0;
   const items = ALERT_TYPES.map(t => ({
     ...t,
     val: alerts[t.key as keyof AlertSummary] as number,
@@ -98,16 +90,20 @@ function DonutSVG({
   const iw = W / Math.min(segments.length, 6);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      style={{ display: "block", overflow: "visible" }}  // ← overflow:visible fixes label clipping
+    >
       <defs>
-        <radialGradient id={`cg_${CX}`} cx="50%" cy="50%" r="50%">
+        <radialGradient id={`cg_d_${CX}`} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="rgba(74,222,128,0.12)" />
           <stop offset="100%" stopColor="transparent" />
         </radialGradient>
       </defs>
 
       {/* Glow */}
-      <circle cx={CX} cy={CY} r={OR + 18} fill={`url(#cg_${CX})`} />
+      <circle cx={CX} cy={CY} r={OR + 18} fill={`url(#cg_d_${CX})`} />
 
       {/* Track */}
       <circle cx={CX} cy={CY} r={(OR + IR) / 2} fill="none"
@@ -122,16 +118,16 @@ function DonutSVG({
         />
       ))}
 
-      {/* Inner dark */}
+      {/* Inner fill */}
       <circle cx={CX} cy={CY} r={IR - 1} fill="#0a0f0a" />
 
-      {/* Center total */}
-      <text x={CX} y={CY - subFontSize * 1.1} textAnchor="middle" dominantBaseline="middle"
+      {/* Center text */}
+      <text x={CX} y={CY - subFontSize * 1.2} textAnchor="middle" dominantBaseline="middle"
         style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800,
           fontSize: `${centerFontSize}px`, fill: "#f0f7f0" }}>
         {fmt(total)}
       </text>
-      <text x={CX} y={CY + subFontSize * 1.4} textAnchor="middle" dominantBaseline="middle"
+      <text x={CX} y={CY + subFontSize * 1.5} textAnchor="middle" dominantBaseline="middle"
         style={{ fontFamily: "'Inter', sans-serif", fontSize: `${subFontSize}px`,
           fill: "rgba(255,255,255,0.38)", letterSpacing: "0.1em" }}>
         TOTAL ALARMS
@@ -142,45 +138,47 @@ function DonutSVG({
         const isRight = seg.midAngle < 180;
         const p1 = polarToCartesian(CX, CY, OR + 5, seg.midAngle);
         const p2 = polarToCartesian(CX, CY, OR + lineReach, seg.midAngle);
+        // Horizontal endpoint — extends well beyond the donut
         const endX = isRight
-          ? Math.min(CX + labelReach, W - 4)
-          : Math.max(CX - labelReach, 4);
+          ? CX + OR + lineReach + labelOffset
+          : CX - OR - lineReach - labelOffset;
         const p3 = { x: endX, y: p2.y };
         const pctStr = `(${(seg.pct * 100).toFixed(seg.pct < 0.01 ? 2 : seg.pct < 0.1 ? 2 : 1)}%)`;
+        const displayLabel = seg.short;
 
         return (
           <g key={`lbl-${seg.key}`}>
             <circle cx={p1.x} cy={p1.y} r={dotR} fill={seg.color} />
             <polyline
               points={`${p1.x.toFixed(1)},${p1.y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)} ${p3.x.toFixed(1)},${p3.y.toFixed(1)}`}
-              fill="none" stroke={seg.color} strokeWidth="0.8" strokeOpacity="0.65"
+              fill="none" stroke={seg.color} strokeWidth="0.85" strokeOpacity="0.65"
             />
             <text
-              x={isRight ? p3.x + 3 : p3.x - 3}
+              x={isRight ? p3.x + 4 : p3.x - 4}
               y={p3.y}
               textAnchor={isRight ? "start" : "end"}
               dominantBaseline="middle"
               style={{ fontFamily: "'Inter', sans-serif", fontSize: `${fontSize}px`,
-                fill: "rgba(240,247,240,0.75)", fontWeight: 500 }}>
-              {seg.short}{" "}
-              <tspan fill={seg.color} fontWeight="600" fontSize={`${pctFontSize}px`}>{pctStr}</tspan>
+                fill: "rgba(240,247,240,0.8)", fontWeight: 500 }}>
+              {displayLabel}{" "}
+              <tspan fill={seg.color} fontWeight="700" fontSize={`${pctFontSize}px`}>{pctStr}</tspan>
             </text>
           </g>
         );
       })}
 
-      {/* Legend row */}
+      {/* Legend row (full mode only) */}
       {showLegend && (
         <g>
           {segments.map((seg, i) => {
             const lx = (i + 0.5) * iw;
             return (
               <g key={`leg-${seg.key}`}>
-                <rect x={lx - 16} y={legendY - 5} width={9} height={9} rx={2}
+                <rect x={lx - 18} y={legendY - 5} width={10} height={10} rx={2}
                   fill={seg.color} fillOpacity={0.85} />
-                <text x={lx - 4} y={legendY + 1} dominantBaseline="middle"
-                  style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fill: "rgba(255,255,255,0.35)" }}>
-                  {seg.short.split(" ")[0]}
+                <text x={lx - 5} y={legendY + 1} dominantBaseline="middle"
+                  style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fill: "rgba(255,255,255,0.35)" }}>
+                  {seg.short}
                 </text>
               </g>
             );
@@ -191,25 +189,8 @@ function DonutSVG({
   );
 }
 
-// ── Main export ────────────────────────────────────────────────────────────
-export default function DonutAlertChart({
-  alerts, title, titleCenter = false,
-  compact = false, card = false,
-}: Props) {
+export default function DonutAlertChart({ alerts, title, titleCenter = false, compact = false, card = false }: Props) {
   const total = alerts.totalAlerts || 0;
-
-  const emptyState = (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "center",
-      height: card ? "100px" : "120px",
-      color: "rgba(255,255,255,0.2)",
-      fontFamily: "'Inter', sans-serif", fontSize: "12px",
-      background: "rgba(255,255,255,0.02)", borderRadius: "12px",
-      border: "1px solid rgba(255,255,255,0.05)",
-    }}>
-      No alert data
-    </div>
-  );
 
   const titleEl = title && (
     <div style={{
@@ -217,7 +198,7 @@ export default function DonutAlertChart({
       fontWeight: 700,
       fontSize: card ? "11px" : compact ? "13px" : "15px",
       color: "#f0f7f0",
-      marginBottom: card ? "8px" : "14px",
+      marginBottom: card ? "6px" : "14px",
       letterSpacing: "-0.01em",
       textAlign: titleCenter ? "center" : "left",
     }}>
@@ -225,66 +206,73 @@ export default function DonutAlertChart({
     </div>
   );
 
-  // ── CARD mode: same donut style as full, fits inside a card ────────────
+  const emptyEl = (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      height: card ? "100px" : "120px",
+      color: "rgba(255,255,255,0.2)", fontFamily: "'Inter', sans-serif", fontSize: "12px",
+      background: "rgba(255,255,255,0.02)", borderRadius: "12px",
+      border: "1px solid rgba(255,255,255,0.05)",
+    }}>
+      No alert data
+    </div>
+  );
+
+  // CARD mode — fits inside a card, overflow:visible handles labels
   if (card) {
     return (
-      <div>
+      <div style={{ padding: "0 40px" }}> {/* horizontal padding gives space for overflow labels */}
         {titleEl}
-        {total === 0 ? emptyState : (
-          <DonutSVG
-            alerts={alerts}
-            W={380} H={260}
-            CX={190} CY={122}
-            OR={82} IR={52}
-            lineReach={28} labelReach={145}
-            fontSize={9.5} pctFontSize={8.5}
-            dotR={2.2}
-            centerFontSize={22} subFontSize={7}
-          />
+        {total === 0 ? emptyEl : (
+          <DonutCore alerts={alerts} cfg={{
+            W: 300, H: 260,
+            CX: 150, CY: 122,
+            OR: 82, IR: 52,
+            lineReach: 28, labelOffset: 90,
+            fontSize: 9.5, pctFontSize: 8.5,
+            dotR: 2.2,
+            centerFontSize: 22, subFontSize: 7,
+          }} />
         )}
       </div>
     );
   }
 
-  // ── COMPACT mode: modal ─────────────────────────────────────────────────
+  // COMPACT mode — modals
   if (compact) {
     return (
-      <div>
+      <div style={{ padding: "0 50px" }}>
         {titleEl}
-        {total === 0 ? emptyState : (
-          <DonutSVG
-            alerts={alerts}
-            W={420} H={280}
-            CX={175} CY={138}
-            OR={100} IR={63}
-            lineReach={32} labelReach={200}
-            fontSize={10} pctFontSize={9}
-            dotR={2.5}
-            centerFontSize={26} subFontSize={8}
-          />
+        {total === 0 ? emptyEl : (
+          <DonutCore alerts={alerts} cfg={{
+            W: 340, H: 280,
+            CX: 170, CY: 134,
+            OR: 100, IR: 64,
+            lineReach: 32, labelOffset: 100,
+            fontSize: 10.5, pctFontSize: 9.5,
+            dotR: 2.5,
+            centerFontSize: 27, subFontSize: 8.5,
+          }} />
         )}
       </div>
     );
   }
 
-  // ── FULL mode: overall summary ──────────────────────────────────────────
+  // FULL mode — overall summary
   return (
-    <div style={{ marginBottom: "28px" }}>
+    <div style={{ marginBottom: "28px", padding: "0 60px" }}>
       {titleEl}
-      {total === 0 ? emptyState : (
-        <div style={{ overflowX: "auto" }}>
-          <DonutSVG
-            alerts={alerts}
-            W={600} H={380}
-            CX={210} CY={185}
-            OR={135} IR={86}
-            lineReach={38} labelReach={350}
-            fontSize={11.5} pctFontSize={10.5}
-            dotR={3}
-            centerFontSize={30} subFontSize={10}
-            showLegend={true}
-          />
-        </div>
+      {total === 0 ? emptyEl : (
+        <DonutCore alerts={alerts} cfg={{
+          W: 480, H: 380,
+          CX: 240, CY: 175,
+          OR: 135, IR: 87,
+          lineReach: 40, labelOffset: 130,
+          fontSize: 12, pctFontSize: 11,
+          dotR: 3,
+          centerFontSize: 32, subFontSize: 10,
+          showLegend: true,
+        }} />
       )}
     </div>
   );
