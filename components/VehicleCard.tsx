@@ -1,6 +1,7 @@
 import React from "react";
 import { VehicleData } from "@/lib/sheets";
 import ScoreRing from "./ScoreRing";
+import DonutAlertChart from "./DonutAlertChart";
 
 interface Props {
   vehicle: VehicleData;
@@ -28,15 +29,6 @@ export default function VehicleCard({ vehicle, index, onClick }: Props) {
   const { vehicleNumber, score, clientName, alerts } = vehicle;
   const clr = scoreColor(score);
   const safeScore = score ?? 0;
-
-  const alertItems = [
-    { label: "Distracted", val: alerts.distractedDriving, color: "#f87171" },
-    { label: "Seat Belt",  val: alerts.seatBeltAbsent,    color: "#fb923c" },
-    { label: "Smoking",    val: alerts.smoking,            color: "#94a3b8" },
-    { label: "Fatigue",    val: alerts.fatigueDriving,     color: "#60a5fa" },
-    { label: "Phone",      val: alerts.phoneCall,          color: "#f472b6" },
-    { label: "Speed",      val: alerts.overSpeed,          color: "#fde047" },
-  ].filter(a => a.val > 0);
 
   return (
     <div
@@ -100,55 +92,15 @@ export default function VehicleCard({ vehicle, index, onClick }: Props) {
           </div>
         </div>
 
-        {/* Score ring — smaller for vehicle cards */}
+        {/* Score ring */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
           <ScoreRing score={safeScore} size={90} strokeWidth={7} />
         </div>
 
-        {/* Total alerts pill */}
-        {alerts.totalAlerts > 0 && (
-          <div style={{
-            background: "rgba(167,139,250,0.1)",
-            border: "1px solid rgba(167,139,250,0.25)",
-            borderRadius: "8px",
-            padding: "7px 12px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "10px",
-          }}>
-            <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.4)", fontFamily: "'Inter', sans-serif", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              Total Alerts
-            </span>
-            <span style={{ fontSize: "16px", fontWeight: 800, color: "#a78bfa", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
-              {alerts.totalAlerts}
-            </span>
-          </div>
-        )}
-
-        {/* Alert breakdown mini chips */}
-        {alertItems.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "12px" }}>
-            {alertItems.map(a => (
-              <div key={a.label} style={{
-                background: `${a.color}12`,
-                border: `1px solid ${a.color}30`,
-                borderRadius: "6px",
-                padding: "3px 8px",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-              }}>
-                <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.4)", fontFamily: "'Inter', sans-serif", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  {a.label}
-                </span>
-                <span style={{ fontSize: "11px", fontWeight: 700, color: a.color, fontFamily: "'Bricolage Grotesque', sans-serif" }}>
-                  {a.val}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Mini donut chart */}
+        <div style={{ marginBottom: "12px" }}>
+          <DonutAlertChart alerts={alerts} mini={true} />
+        </div>
 
         <div style={{ flex: 1 }} />
 
