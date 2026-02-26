@@ -25,18 +25,17 @@ export default function Dashboard() {
       }
       const json: DashboardData = await res.json();
       setData(json);
-      setUpdated(new Date(json.lastUpdated).toLocaleString("en-IN", {
-        day: "2-digit", month: "short", year: "numeric",
-        hour: "2-digit", minute: "2-digit",
-      }));
+      setUpdated(
+        new Date(json.lastUpdated).toLocaleString("en-IN", {
+          day: "2-digit", month: "short", year: "numeric",
+          hour: "2-digit", minute: "2-digit",
+        })
+      );
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
-      if (isRefresh) {
-        setRefreshing(false);
-      } else {
-        setTimeout(() => setLoading(false), 2000);
-      }
+      if (isRefresh) setRefreshing(false);
+      else setTimeout(() => setLoading(false), 2000);
     }
   }, []);
 
@@ -74,47 +73,45 @@ export default function Dashboard() {
           {/* ── HEADER ── */}
           <header style={{
             position: "sticky", top: 0, zIndex: 100,
-            height: "60px",
+            height: "64px",
             borderBottom: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(10,15,10,0.88)",
-            backdropFilter: "blur(20px)",
+            background: "rgba(10,15,10,0.92)",
+            backdropFilter: "blur(24px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 32px",
           }}>
-            {/* Logo + brand — fixed alignment */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div style={{
-                width: "32px",
-                height: "32px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}>
-                <img
-                  src="/cautio_shield.webp"
-                  alt="Cautio"
-                  style={{ width: "28px", height: "28px", objectFit: "contain", display: "block" }}
-                />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+
+            {/* ── LOGO ── */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <img
+                src="/cautio_shield.webp"
+                alt="Cautio"
+                style={{
+                  width: "38px",
+                  height: "38px",
+                  objectFit: "contain",
+                  display: "block",
+                  flexShrink: 0,
+                }}
+              />
+              <div>
                 <div style={{
                   fontFamily: "'Bricolage Grotesque', sans-serif",
                   fontWeight: 800,
-                  fontSize: "17px",
+                  fontSize: "18px",
                   color: "#f0f7f0",
                   letterSpacing: "-0.01em",
-                  lineHeight: "1.1",
+                  lineHeight: "1.15",
                 }}>
                   Cautio
                 </div>
                 <div style={{
                   fontFamily: "'Inter', sans-serif",
-                  fontSize: "9px",
-                  color: "rgba(74,222,128,0.55)",
-                  letterSpacing: "0.12em",
+                  fontSize: "9.5px",
+                  color: "rgba(74,222,128,0.6)",
+                  letterSpacing: "0.13em",
                   textTransform: "uppercase",
                   lineHeight: "1.1",
                 }}>
@@ -123,7 +120,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Right side */}
+            {/* Right */}
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               {updated && (
                 <span style={{
@@ -154,7 +151,7 @@ export default function Dashboard() {
           </header>
 
           {/* ── HERO ── */}
-          <div style={{ padding: "48px 32px 32px", maxWidth: "700px" }}>
+          <div style={{ padding: "48px 32px 28px", maxWidth: "700px" }}>
             <div style={{
               fontSize: "11px",
               letterSpacing: "0.16em",
@@ -184,7 +181,7 @@ export default function Dashboard() {
               fontSize: "15px",
               color: "rgba(240,247,240,0.4)",
               lineHeight: 1.6,
-              maxWidth: "480px",
+              maxWidth: "460px",
               margin: 0,
             }}>
               Real-time safety performance across all sub-clients and vehicles.
@@ -198,7 +195,7 @@ export default function Dashboard() {
                 { label: "Overall Score", val: String(overall), unit: "/ 100", green: true },
                 { label: "Total Vehicles", val: String(data.totalVehicles) },
                 { label: "Sub-Clients", val: String(data.clients.filter(c => c.name !== "Other").length) },
-                { label: "Unmatched", val: String(data.clients.find(c => c.name === "Other")?.totalVehicles ?? 0) },
+                { label: "Other", val: String(data.clients.find(c => c.name === "Other")?.totalVehicles ?? 0) },
               ].map(s => (
                 <div key={s.label} style={{
                   background: s.green ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.02)",
@@ -288,8 +285,13 @@ export default function Dashboard() {
             {data && (
               <div style={{ position: "relative", maxWidth: "320px", marginBottom: "22px" }}>
                 <svg
-                  style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.25)" }}
-                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  style={{
+                    position: "absolute", left: "12px",
+                    top: "50%", transform: "translateY(-50%)",
+                    color: "rgba(255,255,255,0.25)",
+                  }}
+                  width="14" height="14" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="2"
                 >
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -353,10 +355,18 @@ export default function Dashboard() {
             justifyContent: "space-between",
             alignItems: "center",
           }}>
-            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.18)" }}>
+            <span style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "11px",
+              color: "rgba(255,255,255,0.18)",
+            }}>
               © {new Date().getFullYear()} Cautio · Fleet Intelligence Platform
             </span>
-            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(74,222,128,0.35)" }}>
+            <span style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "11px",
+              color: "rgba(74,222,128,0.35)",
+            }}>
               cautio.com
             </span>
           </footer>
