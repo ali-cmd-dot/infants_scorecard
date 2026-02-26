@@ -1,6 +1,7 @@
 import React from "react";
 import ScoreRing from "./ScoreRing";
 import { ClientData } from "@/lib/sheets";
+import DonutAlertChart from "./DonutAlertChart";
 
 interface Props {
   client: ClientData;
@@ -23,7 +24,7 @@ function scoreLabel(s: number) {
 }
 
 export default function ClientCard({ client, index, onClick }: Props) {
-  const { name, averageScore, totalVehicles } = client;
+  const { name, averageScore, totalVehicles, alerts } = client;
   const clr = scoreColor(averageScore);
 
   return (
@@ -32,7 +33,7 @@ export default function ClientCard({ client, index, onClick }: Props) {
       style={{
         animationDelay: `${index * 0.07}s`,
         padding: "0",
-        height: "100%",              /* stretch to grid row height */
+        height: "100%",
         display: "flex",
         flexDirection: "column",
       }}
@@ -46,7 +47,6 @@ export default function ClientCard({ client, index, onClick }: Props) {
         borderRadius: "20px 20px 0 0",
       }} />
 
-      {/* Card body — flex column so button sticks to bottom */}
       <div style={{
         padding: "22px 22px 18px",
         display: "flex",
@@ -102,20 +102,17 @@ export default function ClientCard({ client, index, onClick }: Props) {
           </div>
         </div>
 
-        {/* Score Ring — centered */}
+        {/* Score Ring */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
           <ScoreRing score={averageScore} size={110} strokeWidth={8} />
         </div>
-
-        {/* Spacer — pushes vehicles + button to bottom */}
-        <div style={{ flex: 1 }} />
 
         {/* Vehicles count */}
         <div style={{
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(255,255,255,0.06)",
           borderRadius: "10px",
-          padding: "11px 16px",
+          padding: "9px 16px",
           marginBottom: "12px",
           display: "flex",
           alignItems: "center",
@@ -141,6 +138,13 @@ export default function ClientCard({ client, index, onClick }: Props) {
             {totalVehicles}
           </span>
         </div>
+
+        {/* Mini donut */}
+        <div style={{ marginBottom: "14px" }}>
+          <DonutAlertChart alerts={alerts} mini={true} />
+        </div>
+
+        <div style={{ flex: 1 }} />
 
         {/* View button */}
         <button
