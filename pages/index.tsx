@@ -178,15 +178,26 @@ export default function Dashboard() {
 
             {data && (
               <>
-                {/* ── OVERALL ALERT CARDS ── */}
-                <AlertCards
-                  alerts={data.overallAlerts}
-                  title="Overall Monthly Alert Summary"
-                />
+                {/* ── OVERALL ALERT CHART — centered ── */}
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  marginBottom: "40px",
+                  padding: "28px 24px 20px",
+                  background: "rgba(255,255,255,0.015)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: "20px",
+                }}>
+                  <AlertCards
+                    alerts={data.overallAlerts}
+                    title="Overall Monthly Alert Summary"
+                    titleCenter={true}
+                  />
+                </div>
 
                 {/* ── VIEW TOGGLE + SEARCH ── */}
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "22px", flexWrap: "wrap" }}>
-                  {/* Toggle */}
                   <div style={{
                     display: "flex",
                     background: "rgba(255,255,255,0.04)",
@@ -244,7 +255,6 @@ export default function Dashboard() {
                     />
                   </div>
 
-                  {/* Count */}
                   <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter', sans-serif" }}>
                     {viewMode === "client"
                       ? `${filteredClients?.length ?? 0} sub-clients`
@@ -254,7 +264,7 @@ export default function Dashboard() {
 
                 {/* ── CLIENT VIEW ── */}
                 {viewMode === "client" && (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(255px, 1fr))", gap: "16px", alignItems: "stretch" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px", alignItems: "stretch" }}>
                     {filteredClients?.map((client, i) => (
                       <ClientCard key={client.name} client={client} index={i} onClick={() => setSelectedClient(client)} />
                     ))}
@@ -263,7 +273,7 @@ export default function Dashboard() {
 
                 {/* ── VEHICLE VIEW ── */}
                 {viewMode === "vehicle" && (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: "14px", alignItems: "stretch" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "14px", alignItems: "stretch" }}>
                     {filteredVehicles?.map((vehicle, i) => (
                       <VehicleCard key={vehicle.vehicleNumber} vehicle={vehicle} index={i} onClick={() => setSelectedVehicle(vehicle)} />
                     ))}
