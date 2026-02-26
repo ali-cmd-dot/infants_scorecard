@@ -14,7 +14,7 @@ export interface AlertSummary {
 }
 
 export interface DateAlertPoint {
-  date: string; // raw date string from sheet
+  date: string;
   distractedDriving: number;
   seatBeltAbsent: number;
   smoking: number;
@@ -42,19 +42,15 @@ export interface DashboardData {
   clients: ClientData[];
   vehicles: VehicleData[];
   overallAlerts: AlertSummary;
-  dateAlerts: DateAlertPoint[];   // ← NEW: time-series data
+  dateAlerts: DateAlertPoint[];
   lastUpdated: string;
   totalVehicles: number;
 }
 
-// ✅ Updated Sheet 1 — Tab: Summary
 const SHEET1_ID = "1FCHtmrcuPVXDRbmgMbJI8TSP_wondoE1ElZANVJnHag";
 const SHEET1_SUMMARY_GID = "154520238";
-
-// Sheet 2 — Tab: Installation MIS
 const SHEET2_ID = "1GFUotxyLDqe-2qIOOmuSlshODi6FmzFdPaQ8vtv17AU";
 const SHEET2_GID = "368130144";
-
 const SHEET1_ALERTS_GID = "1184598582";
 
 async function fetchSheetCSV(spreadsheetId: string, gid: string): Promise<string[][]> {
@@ -69,19 +65,14 @@ function parseCSV(text: string): string[][] {
   for (const line of text.split("\n")) {
     if (!line.trim()) continue;
     const cols: string[] = [];
-    let inQuote = false;
-    let cur = "";
+    let inQuote = false, cur = "";
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
       if (ch === '"') {
         if (inQuote && line[i + 1] === '"') { cur += '"'; i++; }
         else inQuote = !inQuote;
-      } else if (ch === "," && !inQuote) {
-        cols.push(cur.trim());
-        cur = "";
-      } else {
-        cur += ch;
-      }
+      } else if (ch === "," && !inQuote) { cols.push(cur.trim()); cur = ""; }
+      else cur += ch;
     }
     cols.push(cur.trim());
     rows.push(cols);
@@ -123,16 +114,26 @@ function addAlerts(a: AlertSummary, b: AlertSummary): AlertSummary {
   };
 }
 
-// Normalize date string → "DD MMM" for display
-function normalizeDate(raw: string): string {
+// Keep date exactly as it appears in the sheet — no parsing
+function cleanDateLabel(raw: string): string {
+  return raw.trim();
+}
+
+// Try to get a sort key from the date string for ordering
+function dateSortKey(raw: string): number {
   const clean = raw.trim();
-  if (!clean) return "";
-  // Try parsing common formats
+  // Try direct parse
   const d = new Date(clean);
-  if (!isNaN(d.getTime())) {
-    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  if (!isNaN(d.getTime())) return d.getTime();
+  // Try DD/MM/YYYY or DD-MM-YYYY
+  const match = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (match) {
+    const [, dd, mm, yy] = match;
+    const year = yy.length === 2 ? 2000 + parseInt(yy) : parseInt(yy);
+    const d2 = new Date(year, parseInt(mm) - 1, parseInt(dd));
+    if (!isNaN(d2.getTime())) return d2.getTime();
   }
-  return clean; // return as-is if unparseable
+  return 0;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -161,22 +162,21 @@ export async function getDashboardData(): Promise<DashboardData> {
     sheet1Vehicles.push({ vehicleNumber: v, score: isNaN(n) ? null : n });
   }
 
-  // ── ALERTS TAB: vehicle → alerts + date → aggregated alerts ──
+  // ── ALERTS TAB ──
   const vehicleAlertMap: Record<string, AlertSummary> = {};
-  // date map: "DD MMM" → accumulated alert counts
   const dateAlertMap: Record<string, DateAlertPoint> = {};
 
   if (alertRows.length > 1) {
     const ha = alertRows[0].map(h => h.trim());
-    const plateCol    = findCol(ha, "plate_number", "plate number", "PlateNumber", "Vehicle Number");
-    const dateCol     = findCol(ha, "date", "Date", "alarm_date", "AlarmDate", "created_at");
-    const distCol     = findCol(ha, "DistractedDrivingAlarm", "Distracted Driving");
-    const seatCol     = findCol(ha, "SeatBeltAbsent", "Seat Belt Absent", "SeatBelt");
-    const smokeCol    = findCol(ha, "SmokingAlarm", "Smoking");
-    const fatigueCol  = findCol(ha, "FatigueDrivingAlarm", "Fatigue Driving");
-    const phoneCol    = findCol(ha, "PhoneCallAlarm", "Phone Call");
-    const speedCol    = findCol(ha, "OverSpeedAlarm", "OverSpeed", "Over Speed");
-    const totalCol    = findCol(ha, "total_alerts", "Total Alerts", "TotalAlerts");
+    const plateCol   = findCol(ha, "plate_number", "plate number", "PlateNumber", "Vehicle Number");
+    const dateCol    = findCol(ha, "date", "Date", "alarm_date", "AlarmDate", "created_at", "Created At");
+    const distCol    = findCol(ha, "DistractedDrivingAlarm", "Distracted Driving");
+    const seatCol    = findCol(ha, "SeatBeltAbsent", "Seat Belt Absent", "SeatBelt");
+    const smokeCol   = findCol(ha, "SmokingAlarm", "Smoking");
+    const fatigueCol = findCol(ha, "FatigueDrivingAlarm", "Fatigue Driving");
+    const phoneCol   = findCol(ha, "PhoneCallAlarm", "Phone Call");
+    const speedCol   = findCol(ha, "OverSpeedAlarm", "OverSpeed", "Over Speed");
+    const totalCol   = findCol(ha, "total_alerts", "Total Alerts", "TotalAlerts");
 
     if (plateCol === -1) throw new Error("Alerts: No plate_number column. Got: " + ha.join(", "));
 
@@ -195,56 +195,44 @@ export async function getDashboardData(): Promise<DashboardData> {
         totalAlerts:       totalCol   !== -1 ? safeInt(row[totalCol])   : 0,
       };
 
-      // vehicle map
       if (!vehicleAlertMap[plate]) vehicleAlertMap[plate] = emptyAlerts();
       vehicleAlertMap[plate] = addAlerts(vehicleAlertMap[plate], rowAlerts);
 
-      // date map
+      // Date aggregation — only if date column exists
       if (dateCol !== -1) {
         const rawDate = row[dateCol]?.trim();
         if (rawDate) {
-          const dateKey = normalizeDate(rawDate);
-          if (dateKey && !dateAlertMap[dateKey]) {
+          const dateKey = cleanDateLabel(rawDate);
+          if (!dateAlertMap[dateKey]) {
             dateAlertMap[dateKey] = {
               date: dateKey,
-              distractedDriving: 0,
-              seatBeltAbsent: 0,
-              smoking: 0,
-              fatigueDriving: 0,
-              phoneCall: 0,
-              overSpeed: 0,
+              distractedDriving: 0, seatBeltAbsent: 0, smoking: 0,
+              fatigueDriving: 0, phoneCall: 0, overSpeed: 0,
             };
           }
-          if (dateKey) {
-            dateAlertMap[dateKey].distractedDriving += rowAlerts.distractedDriving;
-            dateAlertMap[dateKey].seatBeltAbsent    += rowAlerts.seatBeltAbsent;
-            dateAlertMap[dateKey].smoking           += rowAlerts.smoking;
-            dateAlertMap[dateKey].fatigueDriving    += rowAlerts.fatigueDriving;
-            dateAlertMap[dateKey].phoneCall         += rowAlerts.phoneCall;
-            dateAlertMap[dateKey].overSpeed         += rowAlerts.overSpeed;
-          }
+          dateAlertMap[dateKey].distractedDriving += rowAlerts.distractedDriving;
+          dateAlertMap[dateKey].seatBeltAbsent    += rowAlerts.seatBeltAbsent;
+          dateAlertMap[dateKey].smoking           += rowAlerts.smoking;
+          dateAlertMap[dateKey].fatigueDriving    += rowAlerts.fatigueDriving;
+          dateAlertMap[dateKey].phoneCall         += rowAlerts.phoneCall;
+          dateAlertMap[dateKey].overSpeed         += rowAlerts.overSpeed;
         }
       }
     }
   }
 
-  // Sort date alerts chronologically
-  const dateAlerts: DateAlertPoint[] = Object.values(dateAlertMap).sort((a, b) => {
-    const da = new Date(a.date);
-    const db = new Date(b.date);
-    if (!isNaN(da.getTime()) && !isNaN(db.getTime())) return da.getTime() - db.getTime();
-    return a.date.localeCompare(b.date);
-  });
+  const dateAlerts: DateAlertPoint[] = Object.values(dateAlertMap)
+    .sort((a, b) => {
+      const ka = dateSortKey(a.date);
+      const kb = dateSortKey(b.date);
+      if (ka && kb) return ka - kb;
+      return a.date.localeCompare(b.date);
+    });
 
   // ── SHEET 2 ──
   const h2 = s2Rows[0].map(h => h.trim());
-  const vCol2 = findCol(h2,
-    "Vehicle Number/Chassis Number", "VehicleNumber/ChassisNumberNO.",
-    "Vehicle Number", "VehicleNumber", "Chassis Number", "vehicle number"
-  );
-  const cCol = findCol(h2,
-    "Running company/School", "Running Company/School", "Running company", "School"
-  );
+  const vCol2 = findCol(h2, "Vehicle Number/Chassis Number", "VehicleNumber/ChassisNumberNO.", "Vehicle Number", "VehicleNumber", "Chassis Number", "vehicle number");
+  const cCol  = findCol(h2, "Running company/School", "Running Company/School", "Running company", "School");
   if (vCol2 === -1) throw new Error("Sheet2: No vehicle column. Got: " + h2.join(", "));
   if (cCol  === -1) throw new Error("Sheet2: No client column. Got: " + h2.join(", "));
 
@@ -256,7 +244,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     if (client) vehicleToClient[v] = client;
   }
 
-  // ── COMBINE ──
   const allVehicles: VehicleData[] = [];
   const clientMap: Record<string, { vehicles: VehicleScore[]; alerts: AlertSummary }> = {};
 
@@ -271,9 +258,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const clients: ClientData[] = Object.entries(clientMap).map(([name, data]) => {
     const scored = data.vehicles.filter(v => v.score !== null);
-    const avg = scored.length
-      ? Math.round(scored.reduce((s, v) => s + (v.score ?? 0), 0) / scored.length)
-      : 0;
+    const avg = scored.length ? Math.round(scored.reduce((s, v) => s + (v.score ?? 0), 0) / scored.length) : 0;
     return { name, vehicles: data.vehicles, averageScore: avg, totalVehicles: data.vehicles.length, alerts: data.alerts };
   });
 
@@ -286,10 +271,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const overallAlerts = allVehicles.reduce((acc, v) => addAlerts(acc, v.alerts), emptyAlerts());
 
   return {
-    clients,
-    vehicles: allVehicles,
-    overallAlerts,
-    dateAlerts,
+    clients, vehicles: allVehicles, overallAlerts, dateAlerts,
     lastUpdated: new Date().toISOString(),
     totalVehicles: sheet1Vehicles.length,
   };
