@@ -31,16 +31,20 @@ export default function ScoreRing({ score, size = 100, strokeWidth = 7 }: Props)
         strokeLinecap="round"
         strokeDasharray={circ}
         strokeDashoffset={circ}
-        style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.4,0,0.2,1)", strokeDashoffset: offset }}
+        style={{
+          transition: "stroke-dashoffset 1.3s cubic-bezier(0.4,0,0.2,1)",
+          strokeDashoffset: offset,
+        }}
       />
+      {/* Big score number */}
       <text
-        x={c} y={c}
+        x={c} y={c - size * 0.06}
         textAnchor="middle"
         dominantBaseline="central"
         style={{
           transform: `rotate(90deg)`,
           transformOrigin: `${c}px ${c}px`,
-          fontSize: `${size * 0.22}px`,
+          fontSize: `${size * 0.26}px`,
           fontWeight: 800,
           fill: clr,
           fontFamily: "'Bricolage Grotesque', sans-serif",
@@ -48,15 +52,16 @@ export default function ScoreRing({ score, size = 100, strokeWidth = 7 }: Props)
       >
         {score}
       </text>
+      {/* /100 below */}
       <text
-        x={c} y={c + size * 0.17}
+        x={c} y={c + size * 0.2}
         textAnchor="middle"
         dominantBaseline="central"
         style={{
           transform: `rotate(90deg)`,
           transformOrigin: `${c}px ${c}px`,
-          fontSize: `${size * 0.09}px`,
-          fill: "rgba(255,255,255,0.3)",
+          fontSize: `${size * 0.1}px`,
+          fill: "rgba(255,255,255,0.35)",
           fontFamily: "'Inter', sans-serif",
         }}
       >
