@@ -1,5 +1,4 @@
 import React from "react";
-import ScoreRing from "./ScoreRing";
 import { ClientData } from "@/lib/sheets";
 import DonutAlertChart from "./DonutAlertChart";
 
@@ -36,6 +35,7 @@ export default function ClientCard({ client, index, onClick }: Props) {
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        cursor: "pointer",
       }}
       onClick={onClick}
     >
@@ -48,7 +48,7 @@ export default function ClientCard({ client, index, onClick }: Props) {
       }} />
 
       <div style={{
-        padding: "22px 22px 18px",
+        padding: "18px 18px 16px",
         display: "flex",
         flexDirection: "column",
         flex: 1,
@@ -59,7 +59,7 @@ export default function ClientCard({ client, index, onClick }: Props) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          marginBottom: "16px",
+          marginBottom: "10px",
         }}>
           <div style={{ flex: 1, minWidth: 0, paddingRight: "10px" }}>
             <div style={{
@@ -102,62 +102,68 @@ export default function ClientCard({ client, index, onClick }: Props) {
           </div>
         </div>
 
-        {/* Score Ring */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
-          <ScoreRing score={averageScore} size={110} strokeWidth={8} />
-        </div>
-
-        {/* Vehicles count */}
+        {/* Score as plain text + vehicles inline */}
         <div style={{
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: "10px",
-          padding: "9px 16px",
-          marginBottom: "12px",
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-end",
           justifyContent: "space-between",
+          marginBottom: "14px",
         }}>
-          <span style={{
-            fontSize: "10px",
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            color: "rgba(255,255,255,0.35)",
-            fontFamily: "'Inter', sans-serif",
-            fontWeight: 600,
+          <div style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
+            <span style={{
+              fontFamily: "'Bricolage Grotesque', sans-serif",
+              fontWeight: 800,
+              fontSize: "42px",
+              color: clr,
+              lineHeight: 1,
+              letterSpacing: "-0.02em",
+            }}>
+              {averageScore}
+            </span>
+            <span style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "13px",
+              color: "rgba(255,255,255,0.3)",
+              fontWeight: 500,
+              marginBottom: "4px",
+            }}>
+              / 100
+            </span>
+          </div>
+
+          {/* Vehicles pill */}
+          <div style={{
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: "8px",
+            padding: "5px 12px",
+            textAlign: "center",
           }}>
-            Vehicles
-          </span>
-          <span style={{
-            fontSize: "22px",
-            fontWeight: 800,
-            color: "#f0f7f0",
-            fontFamily: "'Bricolage Grotesque', sans-serif",
-            lineHeight: 1,
-          }}>
-            {totalVehicles}
-          </span>
+            <div style={{
+              fontSize: "9px",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "rgba(255,255,255,0.3)",
+              fontFamily: "'Inter', sans-serif",
+              marginBottom: "2px",
+            }}>
+              Vehicles
+            </div>
+            <div style={{
+              fontSize: "18px",
+              fontWeight: 800,
+              color: "#f0f7f0",
+              fontFamily: "'Bricolage Grotesque', sans-serif",
+              lineHeight: 1,
+            }}>
+              {totalVehicles}
+            </div>
+          </div>
         </div>
 
-        {/* Mini donut */}
-        <div style={{ marginBottom: "14px" }}>
-          <DonutAlertChart alerts={alerts} mini={true} />
-        </div>
+        {/* Donut chart — card mode */}
+        <DonutAlertChart alerts={alerts} card={true} />
 
-        <div style={{ flex: 1 }} />
-
-        {/* View button */}
-        <button
-          className="btn-green"
-          style={{ width: "100%", justifyContent: "center" }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="16" />
-            <line x1="8" y1="12" x2="16" y2="12" />
-          </svg>
-          View Vehicles
-        </button>
       </div>
     </div>
   );
