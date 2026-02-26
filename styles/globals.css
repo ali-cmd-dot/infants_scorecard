@@ -4,11 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --green: #4ade80;
@@ -32,32 +28,15 @@ body {
 ::-webkit-scrollbar-thumb { background: #1e3324; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--green); }
 
-/* Loading screen */
-@keyframes logoFadeIn {
-  0% { opacity: 0; transform: scale(0.85); }
-  100% { opacity: 1; transform: scale(1); }
-}
-@keyframes logoPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-@keyframes loadingBar {
-  0% { width: 0%; }
-  100% { width: 100%; }
-}
+@keyframes logoFadeIn { 0%{opacity:0;transform:scale(0.85)} 100%{opacity:1;transform:scale(1)} }
+@keyframes logoPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes loadingBar { 0%{width:0%} 100%{width:100%} }
 .logo-anim { animation: logoFadeIn 0.6s ease-out forwards; }
 .logo-pulse { animation: logoPulse 1.5s ease-in-out infinite; }
 .loading-bar { animation: loadingBar 2s ease-in-out forwards; }
 
-/* Cards */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.card-anim {
-  animation: fadeUp 0.5s ease-out forwards;
-  opacity: 0;
-}
+@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+.card-anim { animation: fadeUp 0.5s ease-out forwards; opacity: 0; }
 
 .scorecard {
   background: var(--card-bg);
@@ -65,7 +44,8 @@ body {
   border-radius: 20px;
   transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
   cursor: pointer;
-  overflow: hidden;
+  /* ↓ overflow visible so donut card labels never get clipped */
+  overflow: visible;
   position: relative;
 }
 .scorecard:hover {
@@ -84,7 +64,6 @@ body {
 }
 .scorecard:hover::after { opacity: 1; }
 
-/* Green button style (like Get In Touch) */
 .btn-green {
   display: inline-flex;
   align-items: center;
@@ -102,51 +81,29 @@ body {
   transition: all 0.2s;
   letter-spacing: 0.02em;
 }
-.btn-green:hover {
-  background: rgba(74,222,128,0.2);
-  border-color: rgba(74,222,128,0.7);
-  box-shadow: 0 0 20px rgba(74,222,128,0.15);
-}
-.btn-green:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.btn-green:hover { background: rgba(74,222,128,0.2); border-color: rgba(74,222,128,0.7); box-shadow: 0 0 20px rgba(74,222,128,0.15); }
+.btn-green:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* Modal */
 .modal-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(5, 12, 5, 0.88);
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(5,12,5,0.88);
   backdrop-filter: blur(16px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   padding: 20px;
 }
 .modal-box {
   background: #0e160e;
   border: 1px solid rgba(74,222,128,0.18);
   border-radius: 24px;
-  width: 100%;
-  max-width: 580px;
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
+  width: 100%; max-width: 640px; max-height: 90vh;
+  display: flex; flex-direction: column;
   box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+  overflow: hidden;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 .spin { animation: spin 1s linear infinite; }
-
-@keyframes shimmer {
-  0% { opacity: 0.3; }
-  50% { opacity: 0.6; }
-  100% { opacity: 0.3; }
-}
+@keyframes shimmer { 0%{opacity:0.3} 50%{opacity:0.6} 100%{opacity:0.3} }
 .shimmer { animation: shimmer 1.4s ease-in-out infinite; }
 
 input::placeholder { color: rgba(255,255,255,0.2); }
