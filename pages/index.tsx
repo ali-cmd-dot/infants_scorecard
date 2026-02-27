@@ -16,6 +16,17 @@ const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: "vehicle",  icon: "🚌", label: "Vehicle View" },
 ];
 
+// Shared style for both overview chart cards — identical container = matched appearance
+const CHART_CARD: React.CSSProperties = {
+  background: "rgba(255,255,255,0.015)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: "20px",
+  padding: "28px 32px 20px",
+  width: "100%",
+  boxSizing: "border-box",
+  marginBottom: "20px",
+};
+
 export default function Dashboard() {
   const [data, setData]             = useState<DashboardData | null>(null);
   const [loading, setLoading]       = useState(true);
@@ -35,7 +46,9 @@ export default function Dashboard() {
       if (!res.ok) { const e = await res.json(); throw new Error(e.details || e.error || "Failed"); }
       const json: DashboardData = await res.json();
       setData(json);
-      setUpdated(new Date(json.lastUpdated).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }));
+      setUpdated(new Date(json.lastUpdated).toLocaleString("en-IN", {
+        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+      }));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -58,22 +71,6 @@ export default function Dashboard() {
 
   const tabIdx = TABS.findIndex(t => t.key === activeTab);
 
-  const SearchBar = ({ placeholder }: { placeholder: string }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
-      <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
-        <svg style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.25)" }}
-          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input type="text" placeholder={placeholder} value={search} onChange={e => setSearch(e.target.value)}
-          style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "9px", padding: "8px 14px 8px 36px", color: "#f0f7f0", fontFamily: "'Inter',sans-serif", fontSize: "13px" }} />
-      </div>
-      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif" }}>
-        {activeTab === "client" ? `${filteredClients?.length ?? 0} sub-clients` : `${filteredVehicles?.length ?? 0} vehicles`}
-      </span>
-    </div>
-  );
-
   return (
     <>
       <Head>
@@ -84,9 +81,10 @@ export default function Dashboard() {
       </Head>
 
       <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
-        <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 40% at 15% 0%, rgba(74,222,128,0.07) 0%, transparent 60%), radial-gradient(ellipse 50% 30% at 85% 100%, rgba(74,222,128,0.04) 0%, transparent 60%)" }} />
+        <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 40% at 15% 0%, rgba(74,222,128,0.07) 0%, transparent 60%)" }} />
 
         <div style={{ position: "relative", zIndex: 1 }}>
+
           {/* HEADER */}
           <header style={{ position: "sticky", top: 0, zIndex: 100, height: "64px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(10,15,10,0.92)", backdropFilter: "blur(24px)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -118,14 +116,14 @@ export default function Dashboard() {
             </p>
           </div>
 
-          {/* STATS BAR */}
+          {/* STATS */}
           {data && (
             <div style={{ padding: "0 32px 24px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
               {[
-                { label: "Overall Score", val: String(overall), unit: "/ 100", green: true },
+                { label: "Overall Score",  val: String(overall), unit: "/ 100", green: true },
                 { label: "Total Vehicles", val: String(data.totalVehicles) },
-                { label: "Sub-Clients", val: String(data.clients.filter(c => c.name !== "Other").length) },
-                { label: "Other", val: String(data.clients.find(c => c.name === "Other")?.totalVehicles ?? 0) },
+                { label: "Sub-Clients",    val: String(data.clients.filter(c => c.name !== "Other").length) },
+                { label: "Other Vehicles", val: String(data.clients.find(c => c.name === "Other")?.totalVehicles ?? 0) },
               ].map(s => (
                 <div key={s.label} style={{ background: s.green ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.02)", border: s.green ? "1px solid rgba(74,222,128,0.2)" : "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "12px 20px", minWidth: "120px" }}>
                   <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", fontFamily: "'Inter',sans-serif", marginBottom: "4px" }}>{s.label}</div>
@@ -138,7 +136,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* SLIDING TABS */}
+          {/* TABS */}
           <div style={{ padding: "0 32px", marginBottom: "28px" }}>
             <div style={{ display: "inline-flex", position: "relative", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "14px", padding: "4px", gap: "2px" }}>
               <div style={{
@@ -146,11 +144,8 @@ export default function Dashboard() {
                 left: `calc(4px + ${tabIdx} * (100% - 8px) / ${TABS.length})`,
                 width: `calc((100% - 8px) / ${TABS.length})`,
                 height: "calc(100% - 8px)",
-                background: "rgba(74,222,128,0.14)",
-                border: "1px solid rgba(74,222,128,0.32)",
-                borderRadius: "10px",
-                transition: "left 0.28s cubic-bezier(0.4,0,0.2,1)",
-                pointerEvents: "none",
+                background: "rgba(74,222,128,0.14)", border: "1px solid rgba(74,222,128,0.32)",
+                borderRadius: "10px", transition: "left 0.28s cubic-bezier(0.4,0,0.2,1)", pointerEvents: "none",
               }} />
               {TABS.map(tab => (
                 <button key={tab.key} onClick={() => { setActiveTab(tab.key); setSearch(""); }}
@@ -176,13 +171,16 @@ export default function Dashboard() {
                 {/* ══ OVERVIEW ══ */}
                 {activeTab === "overview" && (
                   <div>
-                    {/* 1. Overall Donut FIRST */}
-                    <div style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "20px", padding: "28px 24px 24px", marginBottom: "24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                      <DonutAlertChart alerts={data.overallAlerts} title="Overall Monthly Alert Summary" titleCenter={true} />
+                    {/* Chart 1: Donut */}
+                    <div style={CHART_CARD}>
+                      <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: "16px", color: "#f0f7f0", marginBottom: "4px", textAlign: "center", letterSpacing: "-0.01em" }}>
+                        Overall Monthly Alert Summary
+                      </div>
+                      <DonutAlertChart alerts={data.overallAlerts} />
                     </div>
 
-                    {/* 2. Line chart BELOW */}
-                    <div style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "20px", padding: "24px 28px" }}>
+                    {/* Chart 2: Line — same CHART_CARD style, last child no bottom margin */}
+                    <div style={{ ...CHART_CARD, marginBottom: 0 }}>
                       <LineAlertChart data={data.dateAlerts} title="Alert Trends Over Time" />
                     </div>
                   </div>
@@ -191,30 +189,40 @@ export default function Dashboard() {
                 {/* ══ CLIENT VIEW ══ */}
                 {activeTab === "client" && (
                   <>
-                    <SearchBar placeholder="Search sub-clients..." />
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "16px", alignItems: "stretch" }}>
-                      {filteredClients?.map((client, i) => (
-                        <ClientCard key={client.name} client={client} index={i} onClick={() => setSelectedClient(client)} />
-                      ))}
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
+                      <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
+                        <svg style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2">
+                          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" placeholder="Search sub-clients..." value={search} onChange={e => setSearch(e.target.value)}
+                          style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "9px", padding: "8px 14px 8px 36px", color: "#f0f7f0", fontFamily: "'Inter',sans-serif", fontSize: "13px" }} />
+                      </div>
+                      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif" }}>{filteredClients?.length ?? 0} sub-clients</span>
                     </div>
-                    {filteredClients?.length === 0 && (
-                      <div style={{ padding: "60px", textAlign: "center", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif", fontSize: "14px" }}>No results for &quot;{search}&quot;</div>
-                    )}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "16px", alignItems: "stretch" }}>
+                      {filteredClients?.map((client, i) => <ClientCard key={client.name} client={client} index={i} onClick={() => setSelectedClient(client)} />)}
+                    </div>
+                    {filteredClients?.length === 0 && <div style={{ padding: "60px", textAlign: "center", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif", fontSize: "14px" }}>No results for &quot;{search}&quot;</div>}
                   </>
                 )}
 
                 {/* ══ VEHICLE VIEW ══ */}
                 {activeTab === "vehicle" && (
                   <>
-                    <SearchBar placeholder="Search vehicles or clients..." />
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "14px", alignItems: "stretch" }}>
-                      {filteredVehicles?.map((vehicle, i) => (
-                        <VehicleCard key={vehicle.vehicleNumber} vehicle={vehicle} index={i} onClick={() => setSelectedVehicle(vehicle)} />
-                      ))}
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
+                      <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
+                        <svg style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2">
+                          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" placeholder="Search vehicles or clients..." value={search} onChange={e => setSearch(e.target.value)}
+                          style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "9px", padding: "8px 14px 8px 36px", color: "#f0f7f0", fontFamily: "'Inter',sans-serif", fontSize: "13px" }} />
+                      </div>
+                      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif" }}>{filteredVehicles?.length ?? 0} vehicles</span>
                     </div>
-                    {filteredVehicles?.length === 0 && (
-                      <div style={{ padding: "60px", textAlign: "center", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif", fontSize: "14px" }}>No results for &quot;{search}&quot;</div>
-                    )}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "14px", alignItems: "stretch" }}>
+                      {filteredVehicles?.map((vehicle, i) => <VehicleCard key={vehicle.vehicleNumber} vehicle={vehicle} index={i} onClick={() => setSelectedVehicle(vehicle)} />)}
+                    </div>
+                    {filteredVehicles?.length === 0 && <div style={{ padding: "60px", textAlign: "center", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif", fontSize: "14px" }}>No results for &quot;{search}&quot;</div>}
                   </>
                 )}
               </>
