@@ -63,56 +63,35 @@ function spreadLabels(
   const MIN_GAP = 18;
   const process = (group: typeof segs, isRight: boolean) => {
     const items = group
-      .map(seg => {
-        const kink = polar(CX, CY, OR + lineReach, seg.midAngle);
-        return { seg, naturalY: kink.y, finalY: kink.y, kink };
-      })
+      .map(seg => { const kink = polar(CX, CY, OR + lineReach, seg.midAngle); return { seg, naturalY: kink.y, finalY: kink.y, kink }; })
       .sort((a, b) => a.naturalY - b.naturalY);
-
-    for (let i = 1; i < items.length; i++) {
-      if (items[i].finalY - items[i - 1].finalY < MIN_GAP)
-        items[i].finalY = items[i - 1].finalY + MIN_GAP;
-    }
-    for (let i = items.length - 2; i >= 0; i--) {
-      if (items[i + 1].finalY - items[i].finalY < MIN_GAP)
-        items[i].finalY = items[i + 1].finalY - MIN_GAP;
-    }
+    for (let i = 1; i < items.length; i++) if (items[i].finalY - items[i - 1].finalY < MIN_GAP) items[i].finalY = items[i - 1].finalY + MIN_GAP;
+    for (let i = items.length - 2; i >= 0; i--) if (items[i + 1].finalY - items[i].finalY < MIN_GAP) items[i].finalY = items[i + 1].finalY - MIN_GAP;
     return items.map(item => ({
       seg: item.seg,
       dotPt: polar(CX, CY, OR + 5, item.seg.midAngle),
       kinkPt: item.kink,
       endX: isRight ? CX + OR + lineReach + horizLen : CX - OR - lineReach - horizLen,
-      endY: item.finalY,
-      isRight,
+      endY: item.finalY, isRight,
     }));
   };
-
-  const right = segs.filter(s => s.midAngle >= 0 && s.midAngle < 180);
-  const left  = segs.filter(s => s.midAngle >= 180);
-  return [...process(right, true), ...process(left, false)];
+  return [...process(segs.filter(s => s.midAngle >= 0 && s.midAngle < 180), true),
+          ...process(segs.filter(s => s.midAngle >= 180), false)];
 }
 
-// ── CARD: donut left + legend right ─────────────────────────────────────────
+// ── Card mode: donut + legend side by side ───────────────────────────────────
 function CardDonut({ alerts }: { alerts: AlertSummary }) {
   const total = alerts.totalAlerts || 0;
   const segs  = buildSegs(alerts);
-  const active = ALERT_TYPES
-    .map(t => ({ ...t, val: alerts[t.key as keyof AlertSummary] as number }))
-    .filter(t => t.val > 0);
+  const active = ALERT_TYPES.map(t => ({ ...t, val: alerts[t.key as keyof AlertSummary] as number })).filter(t => t.val > 0);
   const W = 200, H = 200, CX = 100, CY = 100, OR = 80, IR = 51;
-
   if (total === 0) return <div style={{ padding: "12px 0", color: "rgba(255,255,255,0.2)", fontFamily: "'Inter',sans-serif", fontSize: "11px", textAlign: "center" }}>No alert data</div>;
-
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
       <div style={{ flexShrink: 0, width: `${W}px` }}>
         <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: "block" }}>
-          <defs>
-            <radialGradient id="cg_card" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(74,222,128,0.1)" /><stop offset="100%" stopColor="transparent" />
-            </radialGradient>
-          </defs>
-          <circle cx={CX} cy={CY} r={OR + 14} fill="url(#cg_card)" />
+          <defs><radialGradient id="cg_c" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="rgba(74,222,128,0.1)"/><stop offset="100%" stopColor="transparent"/></radialGradient></defs>
+          <circle cx={CX} cy={CY} r={OR + 14} fill="url(#cg_c)" />
           <circle cx={CX} cy={CY} r={(OR + IR) / 2} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={OR - IR} />
           {segs.map(s => <path key={s.key} d={arc(CX, CY, OR, IR, s.startAngle, s.endAngle)} fill={s.color} fillOpacity={0.9} stroke="rgba(10,15,10,0.9)" strokeWidth="1" />)}
           <circle cx={CX} cy={CY} r={IR - 1} fill="#111811" />
@@ -137,12 +116,11 @@ function CardDonut({ alerts }: { alerts: AlertSummary }) {
   );
 }
 
-// ── FULL / COMPACT ───────────────────────────────────────────────────────────
+// ── Full / compact mode: pure viewBox scaling, same as line chart ─────────────
 function FullDonut({ alerts, compact }: { alerts: AlertSummary; compact?: boolean }) {
   const segs  = buildSegs(alerts);
   const total = alerts.totalAlerts || 0;
-
-  // Fixed viewBox dimensions — SVG will scale width to container, height is FIXED in pixels
+  // ViewBox — width="100%" with no explicit height means browser uses aspect ratio
   const VW = 900, VH = compact ? 380 : 500;
   const CX = VW / 2, CY = compact ? 178 : 230;
   const OR = compact ? 120 : 160;
@@ -154,73 +132,43 @@ function FullDonut({ alerts, compact }: { alerts: AlertSummary; compact?: boolea
   const dotR = compact ? 3 : 3.5;
   const cfs = compact ? 34 : 44;
   const sfs = compact ? 10 : 12;
-
   const labeled = spreadLabels(segs, CX, CY, OR, lineReach, horizLen);
   const legendY = VH - 22;
   const iw = VW / Math.min(segs.length || 1, 6);
 
-  // ↓ KEY FIX: SVG width="100%" but height is FIXED in px — prevents zoom jitter
-  const fixedHeight = compact ? 380 : 500;
-
   return (
-    <svg
-      viewBox={`0 0 ${VW} ${VH}`}
-      width="100%"
-      height={fixedHeight}
-      preserveAspectRatio="xMidYMid meet"
-      style={{ display: "block" }}
-    >
+    <svg viewBox={`0 0 ${VW} ${VH}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
       <defs>
-        <radialGradient id="cg_full" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(74,222,128,0.13)" /><stop offset="100%" stopColor="transparent" />
+        <radialGradient id="cg_f" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(74,222,128,0.13)"/><stop offset="100%" stopColor="transparent"/>
         </radialGradient>
       </defs>
-
-      <circle cx={CX} cy={CY} r={OR + 24} fill="url(#cg_full)" />
+      <circle cx={CX} cy={CY} r={OR + 24} fill="url(#cg_f)" />
       <circle cx={CX} cy={CY} r={(OR + IR) / 2} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={OR - IR} />
-      {segs.map(s => (
-        <path key={s.key} d={arc(CX, CY, OR, IR, s.startAngle, s.endAngle)}
-          fill={s.color} fillOpacity={0.88} stroke="rgba(10,15,10,0.7)" strokeWidth="0.8" />
-      ))}
+      {segs.map(s => <path key={s.key} d={arc(CX, CY, OR, IR, s.startAngle, s.endAngle)} fill={s.color} fillOpacity={0.88} stroke="rgba(10,15,10,0.7)" strokeWidth="0.8" />)}
       <circle cx={CX} cy={CY} r={IR - 1} fill="#0a0f0a" />
-
-      <text x={CX} y={CY - sfs * 1.3} textAnchor="middle" dominantBaseline="middle"
-        style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: `${cfs}px`, fill: "#f0f7f0" }}>
-        {fmt(total)}
-      </text>
-      <text x={CX} y={CY + sfs * 1.7} textAnchor="middle" dominantBaseline="middle"
-        style={{ fontFamily: "'Inter',sans-serif", fontSize: `${sfs}px`, fill: "rgba(255,255,255,0.38)", letterSpacing: "0.1em" }}>
-        TOTAL ALARMS
-      </text>
-
+      <text x={CX} y={CY - sfs * 1.3} textAnchor="middle" dominantBaseline="middle" style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: `${cfs}px`, fill: "#f0f7f0" }}>{fmt(total)}</text>
+      <text x={CX} y={CY + sfs * 1.7} textAnchor="middle" dominantBaseline="middle" style={{ fontFamily: "'Inter',sans-serif", fontSize: `${sfs}px`, fill: "rgba(255,255,255,0.38)", letterSpacing: "0.1em" }}>TOTAL ALARMS</text>
       {labeled.map(({ seg, dotPt, kinkPt, endX, endY, isRight }) => {
         const pctStr = `(${(seg.pct * 100).toFixed(seg.pct < 0.01 ? 2 : seg.pct < 0.1 ? 1 : 0)}%)`;
         return (
           <g key={`lbl-${seg.key}`}>
             <circle cx={dotPt.x} cy={dotPt.y} r={dotR} fill={seg.color} />
-            <polyline
-              points={`${dotPt.x.toFixed(1)},${dotPt.y.toFixed(1)} ${kinkPt.x.toFixed(1)},${kinkPt.y.toFixed(1)} ${endX.toFixed(1)},${endY.toFixed(1)}`}
-              fill="none" stroke={seg.color} strokeWidth="0.9" strokeOpacity="0.65" />
-            <text x={isRight ? endX + 6 : endX - 6} y={endY}
-              textAnchor={isRight ? "start" : "end"} dominantBaseline="middle"
+            <polyline points={`${dotPt.x.toFixed(1)},${dotPt.y.toFixed(1)} ${kinkPt.x.toFixed(1)},${kinkPt.y.toFixed(1)} ${endX.toFixed(1)},${endY.toFixed(1)}`} fill="none" stroke={seg.color} strokeWidth="0.9" strokeOpacity="0.65" />
+            <text x={isRight ? endX + 6 : endX - 6} y={endY} textAnchor={isRight ? "start" : "end"} dominantBaseline="middle"
               style={{ fontFamily: "'Inter',sans-serif", fontSize: `${fs}px`, fill: "rgba(240,247,240,0.85)", fontWeight: 500 }}>
-              {seg.short}{" "}
-              <tspan fill={seg.color} fontWeight="700" fontSize={`${ps}px`}>{pctStr}</tspan>
+              {seg.short}{" "}<tspan fill={seg.color} fontWeight="700" fontSize={`${ps}px`}>{pctStr}</tspan>
             </text>
           </g>
         );
       })}
-
       <g>
         {segs.map((seg, i) => {
           const lx = (i + 0.5) * iw;
           return (
             <g key={`leg-${seg.key}`}>
               <rect x={lx - 22} y={legendY - 6} width={12} height={12} rx={2} fill={seg.color} fillOpacity={0.85} />
-              <text x={lx - 7} y={legendY + 1} dominantBaseline="middle"
-                style={{ fontFamily: "'Inter',sans-serif", fontSize: "10px", fill: "rgba(255,255,255,0.4)" }}>
-                {seg.short}
-              </text>
+              <text x={lx - 7} y={legendY + 1} dominantBaseline="middle" style={{ fontFamily: "'Inter',sans-serif", fontSize: "10px", fill: "rgba(255,255,255,0.4)" }}>{seg.short}</text>
             </g>
           );
         })}
@@ -231,28 +179,17 @@ function FullDonut({ alerts, compact }: { alerts: AlertSummary; compact?: boolea
 
 export default function DonutAlertChart({ alerts, title, titleCenter = false, compact = false, card = false }: Props) {
   const total = alerts.totalAlerts || 0;
-
   const titleEl = title && (
-    <div style={{
-      fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700,
-      fontSize: card ? "11px" : compact ? "13px" : "16px",
-      color: "#f0f7f0", marginBottom: card ? "10px" : "18px",
-      letterSpacing: "-0.01em", textAlign: titleCenter ? "center" : "left",
-    }}>{title}</div>
+    <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: card ? "11px" : compact ? "13px" : "16px", color: "#f0f7f0", marginBottom: card ? "10px" : "18px", letterSpacing: "-0.01em", textAlign: titleCenter ? "center" : "left" }}>
+      {title}
+    </div>
   );
-
   const emptyEl = (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "center",
-      height: card ? "80px" : "140px", color: "rgba(255,255,255,0.2)",
-      fontFamily: "'Inter',sans-serif", fontSize: "12px",
-      background: "rgba(255,255,255,0.02)", borderRadius: "12px",
-      border: "1px solid rgba(255,255,255,0.05)",
-    }}>No alert data</div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: card ? "80px" : "140px", color: "rgba(255,255,255,0.2)", fontFamily: "'Inter',sans-serif", fontSize: "12px", background: "rgba(255,255,255,0.02)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+      No alert data
+    </div>
   );
-
   if (card) return <div>{titleEl}{total === 0 ? emptyEl : <CardDonut alerts={alerts} />}</div>;
-
   return (
     <div style={{ width: "100%" }}>
       {titleEl}
