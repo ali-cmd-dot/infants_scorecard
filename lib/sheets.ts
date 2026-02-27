@@ -18,8 +18,8 @@ export interface DashboardData {
   dateAlerts: DateAlertPoint[]; lastUpdated: string; totalVehicles: number;
 }
 
-const SHEET1_ID = "1FCHtmrcuPVXDRbmgMbJI8TSP_wondoE1ElZANVJnHag";
-const SHEET1_SUMMARY_GID = "154520238";
+const SHEET1_ID = "1f4-NLt91O_81eB7tCqpgnpglAhZGwxbuSk2Lrc2YY2A";
+const SHEET1_SUMMARY_GID = "793292000";
 const SHEET2_ID = "1GFUotxyLDqe-2qIOOmuSlshODi6FmzFdPaQ8vtv17AU";
 const SHEET2_GID = "368130144";
 const SHEET1_ALERTS_GID = "1184598582";
