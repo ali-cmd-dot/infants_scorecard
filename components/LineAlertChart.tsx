@@ -38,7 +38,9 @@ function areaPath(pts: { x: number; y: number }[], baseY: number): string {
 }
 
 export default function LineAlertChart({ data, title }: Props) {
-  // ViewBox — intrinsic aspect ratio drives height automatically at any zoom/width
+  // ViewBox defines the internal coordinate space
+  // SVG is rendered with width="100%" (fills container) and height="420" (fixed pixels)
+  // preserveAspectRatio="none" so width stretches fully without affecting height
   const VW = 900, VH = 420;
   const PAD_L = 64, PAD_R = 24, PAD_T = 24, PAD_B = 68;
   const chartW = VW - PAD_L - PAD_R;
@@ -52,8 +54,7 @@ export default function LineAlertChart({ data, title }: Props) {
     if (!data.length) return { pointsMap: {}, yMax: 100, yTicks: [], xStep: 0 };
     let max = 0;
     for (const d of data) for (const s of SERIES) {
-      const v = d[s.key] as number;
-      if (v > max) max = v;
+      const v = d[s.key] as number; if (v > max) max = v;
     }
     const mag = Math.pow(10, Math.floor(Math.log10(max || 1)));
     const niceMax = Math.ceil((max * 1.1) / mag) * mag;
@@ -76,6 +77,7 @@ export default function LineAlertChart({ data, title }: Props) {
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (!svgRef.current || !data.length || !xStep) return;
     const rect = svgRef.current.getBoundingClientRect();
+    // With preserveAspectRatio="none", x scales uniformly with width
     const scaleX = VW / rect.width;
     const relX = (e.clientX - rect.left) * scaleX - PAD_L;
     setHoverIdx(Math.max(0, Math.min(data.length - 1, Math.round(relX / xStep))));
@@ -83,7 +85,7 @@ export default function LineAlertChart({ data, title }: Props) {
 
   const handleMouseLeave = useCallback(() => setHoverIdx(null), []);
 
-  const hoverX   = hoverIdx !== null ? PAD_L + hoverIdx * xStep : null;
+  const hoverX    = hoverIdx !== null ? PAD_L + hoverIdx * xStep : null;
   const hoverData = hoverIdx !== null ? data[hoverIdx] : null;
   const tooltipLeft = hoverX !== null && hoverX > VW * 0.6;
 
@@ -107,15 +109,16 @@ export default function LineAlertChart({ data, title }: Props) {
       )}
 
       {/*
-        KEY: no explicit height attribute + no wrapper with overflow.
-        SVG width="100%" + viewBox = browser scales height via aspect ratio.
-        This means at ANY zoom level the SVG fills 100% of container width.
+        width="100%"  → always fills the full container width (even on zoom)
+        height="420"  → fixed pixel height, never changes with zoom
+        preserveAspectRatio="none" → x-axis stretches to fill width, y stays at 420px
       */}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${VW} ${VH}`}
         width="100%"
-        preserveAspectRatio="xMidYMid meet"
+        height="420"
+        preserveAspectRatio="none"
         style={{ display: "block", cursor: "crosshair" }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -156,7 +159,7 @@ export default function LineAlertChart({ data, title }: Props) {
           );
         })}
 
-        {/* Area fills (reverse = smaller on top) */}
+        {/* Area fills */}
         {[...SERIES].reverse().map(s => {
           const pts = pointsMap[s.key];
           if (!pts || pts.length < 2) return null;
@@ -174,35 +177,27 @@ export default function LineAlertChart({ data, title }: Props) {
           );
         })}
 
-        {/* Hover layer */}
+        {/* Hover */}
         {hoverX !== null && hoverData && (() => {
           const active = SERIES.filter(s => (hoverData[s.key] as number) > 0);
           const BOX_W = 195, BOX_H = 14 + active.length * 22 + 8;
           const bx = tooltipLeft ? hoverX - BOX_W - 16 : hoverX + 16;
           const by = Math.max(PAD_T, PAD_T + chartH / 2 - BOX_H / 2);
-
           return (
             <>
-              {/* Crosshair */}
               <line x1={hoverX} y1={PAD_T} x2={hoverX} y2={baseY}
                 stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="4 3" />
-
-              {/* Highlighted lines on hover */}
               {SERIES.map(s => {
                 const pts = pointsMap[s.key];
                 if (!pts || (hoverData[s.key] as number) === 0) return null;
                 return <path key={`hl-${s.key}`} d={smoothPath(pts)} fill="none" stroke={s.color} strokeWidth="2.5" strokeOpacity="1" />;
               })}
-
-              {/* Dots */}
               {SERIES.map(s => {
                 const pts = pointsMap[s.key];
                 if (!pts || hoverIdx === null || (hoverData[s.key] as number) === 0) return null;
                 const pt = pts[hoverIdx];
                 return <circle key={`d-${s.key}`} cx={pt.x} cy={pt.y} r="5" fill={s.color} stroke="#0a0f0a" strokeWidth="2" />;
               })}
-
-              {/* Tooltip */}
               <g>
                 <rect x={bx} y={by} width={BOX_W} height={BOX_H} rx="10"
                   fill="#0e160e" stroke="rgba(74,222,128,0.28)" strokeWidth="1"
@@ -232,7 +227,7 @@ export default function LineAlertChart({ data, title }: Props) {
           );
         })()}
 
-        {/* Bottom legend */}
+        {/* Legend */}
         {(() => {
           const ly = VH - 20;
           const lw = 145;
