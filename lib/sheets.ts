@@ -19,10 +19,10 @@ export interface DashboardData {
 }
 
 const SHEET1_ID = "1f4-NLt91O_81eB7tCqpgnpglAhZGwxbuSk2Lrc2YY2A";
-const SHEET1_SUMMARY_GID = "793292000";
+const SHEET1_SUMMARY_GID = "1750056371";
 const SHEET2_ID = "1GFUotxyLDqe-2qIOOmuSlshODi6FmzFdPaQ8vtv17AU";
 const SHEET2_GID = "368130144";
-const SHEET1_ALERTS_GID = "1184598582";
+const SHEET1_ALERTS_GID = "793292000";
 
 async function fetchSheetCSV(id: string, gid: string): Promise<string[][]> {
   const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
