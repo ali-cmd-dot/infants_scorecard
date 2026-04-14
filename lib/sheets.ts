@@ -72,13 +72,10 @@ function addAlerts(a: AlertSummary, b: AlertSummary): AlertSummary {
 // ── Date sort key — handles DD/MM/YYYY, YYYY-MM-DD, etc. without ambiguity ──
 function dateSortKey(raw: string): number {
   const s = raw.trim();
-  // DD/MM/YYYY or DD-MM-YYYY
   let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (m) return new Date(+m[3], +m[2]-1, +m[1]).getTime();
-  // YYYY-MM-DD
   m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
   if (m) return new Date(+m[1], +m[2]-1, +m[3]).getTime();
-  // DD/MM/YY
   m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
   if (m) return new Date(2000 + +m[3], +m[2]-1, +m[1]).getTime();
   return 0;
@@ -118,21 +115,32 @@ export async function getDashboardData(): Promise<DashboardData> {
     const fatigueCol=findCol(ha,"FatigueDrivingAlarm","Fatigue Driving");
     const phoneCol  =findCol(ha,"PhoneCallAlarm","Phone Call");
     const speedCol  =findCol(ha,"OverSpeedAlarm","OverSpeed","Over Speed");
-    const totalCol  =findCol(ha,"total_alerts","Total Alerts","TotalAlerts");
     if (plateCol===-1) throw new Error("Alerts: No plate_number column. Got: "+ha.join(", "));
 
     for (let i=1;i<alertRows.length;i++) {
       const row=alertRows[i];
       const plate=row[plateCol]?.trim(); if(!plate) continue;
+
+      // ── FIX: always compute totalAlerts as sum of individual types ──
+      // This ensures percentages always add up to 100% regardless of
+      // what the sheet's own total column says.
+      const dd = distCol   !==-1 ? safeInt(row[distCol])    : 0;
+      const sb = seatCol   !==-1 ? safeInt(row[seatCol])    : 0;
+      const sm = smokeCol  !==-1 ? safeInt(row[smokeCol])   : 0;
+      const fd = fatigueCol!==-1 ? safeInt(row[fatigueCol]) : 0;
+      const pc = phoneCol  !==-1 ? safeInt(row[phoneCol])   : 0;
+      const os = speedCol  !==-1 ? safeInt(row[speedCol])   : 0;
+
       const ra: AlertSummary = {
-        distractedDriving: distCol   !==-1?safeInt(row[distCol])   :0,
-        seatBeltAbsent:    seatCol   !==-1?safeInt(row[seatCol])   :0,
-        smoking:           smokeCol  !==-1?safeInt(row[smokeCol])  :0,
-        fatigueDriving:    fatigueCol!==-1?safeInt(row[fatigueCol]):0,
-        phoneCall:         phoneCol  !==-1?safeInt(row[phoneCol])  :0,
-        overSpeed:         speedCol  !==-1?safeInt(row[speedCol])  :0,
-        totalAlerts:       totalCol  !==-1?safeInt(row[totalCol])  :0,
+        distractedDriving: dd,
+        seatBeltAbsent:    sb,
+        smoking:           sm,
+        fatigueDriving:    fd,
+        phoneCall:         pc,
+        overSpeed:         os,
+        totalAlerts:       dd + sb + sm + fd + pc + os,   // ← computed, not from sheet
       };
+
       if (!vehicleAlertMap[plate]) vehicleAlertMap[plate]=emptyAlerts();
       vehicleAlertMap[plate]=addAlerts(vehicleAlertMap[plate],ra);
 
