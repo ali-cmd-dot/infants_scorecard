@@ -16,17 +16,6 @@ const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: "vehicle",  icon: "🚌", label: "Vehicle View" },
 ];
 
-// Shared style for both overview chart cards — identical container = matched appearance
-const CHART_CARD: React.CSSProperties = {
-  background: "rgba(255,255,255,0.015)",
-  border: "1px solid rgba(255,255,255,0.06)",
-  borderRadius: "20px",
-  padding: "28px 32px 20px",
-  width: "100%",
-  boxSizing: "border-box",
-  marginBottom: "20px",
-};
-
 export default function Dashboard() {
   const [data, setData]             = useState<DashboardData | null>(null);
   const [loading, setLoading]       = useState(true);
@@ -69,7 +58,59 @@ export default function Dashboard() {
 
   if (loading) return <LoadingScreen />;
 
+  // ── shared stat pills used in both layouts ──────────────────────────────
+  const statPills = data && (
+    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+      {[
+        { label: "Overall Score",  val: String(overall), unit: "/ 100", green: true },
+        { label: "Total Vehicles", val: String(data.totalVehicles) },
+        { label: "Sub-Clients",    val: String(data.clients.filter(c => c.name !== "Other").length) },
+        { label: "Other Vehicles", val: String(data.clients.find(c => c.name === "Other")?.totalVehicles ?? 0) },
+      ].map(s => (
+        <div key={s.label} style={{
+          background: s.green ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.02)",
+          border:     s.green ? "1px solid rgba(74,222,128,0.2)" : "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "10px", padding: "8px 16px", minWidth: "100px",
+        }}>
+          <div style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", fontFamily: "'Inter',sans-serif", marginBottom: "3px" }}>{s.label}</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "3px" }}>
+            <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: "20px", color: s.green ? "#4ade80" : "#f0f7f0" }}>{s.val}</span>
+            {s.unit && <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif" }}>{s.unit}</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // ── shared tab bar ───────────────────────────────────────────────────────
   const tabIdx = TABS.findIndex(t => t.key === activeTab);
+  const tabBar = (
+    <div style={{ display: "inline-flex", position: "relative", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "14px", padding: "4px", gap: "2px" }}>
+      <div style={{
+        position: "absolute", top: "4px",
+        left: `calc(4px + ${tabIdx} * (100% - 8px) / ${TABS.length})`,
+        width: `calc((100% - 8px) / ${TABS.length})`,
+        height: "calc(100% - 8px)",
+        background: "rgba(74,222,128,0.14)", border: "1px solid rgba(74,222,128,0.32)",
+        borderRadius: "10px", transition: "left 0.28s cubic-bezier(0.4,0,0.2,1)", pointerEvents: "none",
+      }} />
+      {TABS.map(tab => (
+        <button key={tab.key} onClick={() => { setActiveTab(tab.key); setSearch(""); }}
+          style={{ position: "relative", zIndex: 1, background: "transparent", border: "none", borderRadius: "10px", padding: "8px 20px", color: activeTab === tab.key ? "#4ade80" : "rgba(255,255,255,0.38)", fontFamily: "'Inter',sans-serif", fontSize: "13px", fontWeight: 600, cursor: "pointer", transition: "color 0.2s", letterSpacing: "0.02em", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "7px" }}>
+          <span>{tab.icon}</span>{tab.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  // ── error block ──────────────────────────────────────────────────────────
+  const errorBlock = error && (
+    <div style={{ padding: "16px 20px", borderRadius: "12px", background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.18)", marginBottom: "16px" }}>
+      <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, color: "#f87171", marginBottom: "4px", fontSize: "14px" }}>⚠️ Failed to load</div>
+      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.35)", marginBottom: "12px", wordBreak: "break-all" }}>{error}</div>
+      <button className="btn-green" onClick={() => fetchData(true)}>Retry</button>
+    </div>
+  );
 
   return (
     <>
@@ -81,11 +122,12 @@ export default function Dashboard() {
       </Head>
 
       <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+        {/* Background radial glow */}
         <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 40% at 15% 0%, rgba(74,222,128,0.07) 0%, transparent 60%)" }} />
 
         <div style={{ position: "relative", zIndex: 1 }}>
 
-          {/* HEADER */}
+          {/* ═══════════════ HEADER ═══════════════ */}
           <header style={{ position: "sticky", top: 0, zIndex: 100, height: "64px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(10,15,10,0.92)", backdropFilter: "blur(24px)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <img src="/cautio_shield.webp" alt="Cautio" style={{ width: "36px", height: "36px", objectFit: "contain", display: "block" }} />
@@ -105,89 +147,121 @@ export default function Dashboard() {
             </div>
           </header>
 
-          {/* HERO */}
-          <div style={{ padding: "40px 32px 20px", maxWidth: "700px" }}>
-            <div style={{ fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(74,222,128,0.55)", fontFamily: "'Inter',sans-serif", marginBottom: "10px", fontWeight: 600 }}>Client · Infants</div>
-            <h1 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: "clamp(28px,4vw,46px)", lineHeight: 1.1, letterSpacing: "-0.025em", color: "#f0f7f0", marginBottom: "10px" }}>
-              Fleet Safety <span style={{ color: "#4ade80", fontStyle: "italic" }}>Scores,</span><br />At a Glance
-            </h1>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: "14px", color: "rgba(240,247,240,0.4)", lineHeight: 1.6, maxWidth: "440px", margin: 0 }}>
-              Real-time safety performance across all sub-clients and vehicles.
-            </p>
-          </div>
+          {/* ═══════════════ OVERVIEW TAB — single-screen, no scroll ═══════════════ */}
+          {activeTab === "overview" && (
+            <div style={{
+              height: "calc(100vh - 64px)",
+              display: "flex",
+              flexDirection: "column",
+              padding: "18px 32px 14px",
+              gap: "12px",
+              overflow: "hidden",
+            }}>
 
-          {/* STATS */}
-          {data && (
-            <div style={{ padding: "0 32px 24px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              {[
-                { label: "Overall Score",  val: String(overall), unit: "/ 100", green: true },
-                { label: "Total Vehicles", val: String(data.totalVehicles) },
-                { label: "Sub-Clients",    val: String(data.clients.filter(c => c.name !== "Other").length) },
-                { label: "Other Vehicles", val: String(data.clients.find(c => c.name === "Other")?.totalVehicles ?? 0) },
-              ].map(s => (
-                <div key={s.label} style={{ background: s.green ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.02)", border: s.green ? "1px solid rgba(74,222,128,0.2)" : "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "12px 20px", minWidth: "120px" }}>
-                  <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", fontFamily: "'Inter',sans-serif", marginBottom: "4px" }}>{s.label}</div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                    <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: "24px", color: s.green ? "#4ade80" : "#f0f7f0" }}>{s.val}</span>
-                    {s.unit && <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif" }}>{s.unit}</span>}
+              {/* ── Row 1: compact hero (left) + donut chart (right) ── */}
+              <div style={{ display: "flex", gap: "28px", alignItems: "center", flexShrink: 0 }}>
+
+                {/* Left: hero text + stats */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "10px", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(74,222,128,0.55)", fontFamily: "'Inter',sans-serif", fontWeight: 600, marginBottom: "6px" }}>
+                    Client · Infants
                   </div>
+                  <h1 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: "clamp(20px,2.2vw,30px)", lineHeight: 1.15, letterSpacing: "-0.025em", color: "#f0f7f0", marginBottom: "6px", margin: "0 0 6px 0" }}>
+                    Fleet Safety <span style={{ color: "#4ade80", fontStyle: "italic" }}>Scores,</span> At a Glance
+                  </h1>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: "12px", color: "rgba(240,247,240,0.4)", lineHeight: 1.5, margin: "0 0 12px 0" }}>
+                    Real-time safety performance across all sub-clients and vehicles.
+                  </p>
+                  {statPills}
                 </div>
-              ))}
+
+                {/* Right: donut chart — placed where the hero right-side space is */}
+                {data && (
+                  <div style={{
+                    width: "min(44%, 460px)",
+                    flexShrink: 0,
+                    background: "rgba(255,255,255,0.015)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: "16px",
+                    padding: "12px 16px 10px",
+                  }}>
+                    <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: "12px", color: "rgba(240,247,240,0.7)", marginBottom: "4px", textAlign: "center", letterSpacing: "-0.01em" }}>
+                      Overall Monthly Alert Summary
+                    </div>
+                    <DonutAlertChart alerts={data.overallAlerts} compact={true} />
+                  </div>
+                )}
+              </div>
+
+              {/* ── Row 2: tab bar ── */}
+              <div style={{ flexShrink: 0 }}>
+                {tabBar}
+              </div>
+
+              {/* ── Row 3: error or line chart (fills all remaining height) ── */}
+              {errorBlock}
+              {data && (
+                <div style={{
+                  flex: 1,
+                  minHeight: 0,
+                  background: "rgba(255,255,255,0.015)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: "16px",
+                  padding: "14px 20px 8px",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}>
+                  <LineAlertChart data={data.dateAlerts} title="Alert Trends Over Time" fillHeight={true} />
+                </div>
+              )}
             </div>
           )}
 
-          {/* TABS */}
-          <div style={{ padding: "0 32px", marginBottom: "28px" }}>
-            <div style={{ display: "inline-flex", position: "relative", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "14px", padding: "4px", gap: "2px" }}>
-              <div style={{
-                position: "absolute", top: "4px",
-                left: `calc(4px + ${tabIdx} * (100% - 8px) / ${TABS.length})`,
-                width: `calc((100% - 8px) / ${TABS.length})`,
-                height: "calc(100% - 8px)",
-                background: "rgba(74,222,128,0.14)", border: "1px solid rgba(74,222,128,0.32)",
-                borderRadius: "10px", transition: "left 0.28s cubic-bezier(0.4,0,0.2,1)", pointerEvents: "none",
-              }} />
-              {TABS.map(tab => (
-                <button key={tab.key} onClick={() => { setActiveTab(tab.key); setSearch(""); }}
-                  style={{ position: "relative", zIndex: 1, background: "transparent", border: "none", borderRadius: "10px", padding: "8px 22px", color: activeTab === tab.key ? "#4ade80" : "rgba(255,255,255,0.38)", fontFamily: "'Inter',sans-serif", fontSize: "13px", fontWeight: 600, cursor: "pointer", transition: "color 0.2s", letterSpacing: "0.02em", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "7px" }}>
-                  <span>{tab.icon}</span>{tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* CONTENT */}
-          <div style={{ padding: "0 32px 60px" }}>
-            {error && (
-              <div style={{ padding: "24px 28px", borderRadius: "14px", background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.18)", maxWidth: "520px", marginBottom: "24px" }}>
-                <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, color: "#f87171", marginBottom: "6px", fontSize: "15px" }}>⚠️ Failed to load</div>
-                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.35)", marginBottom: "14px", wordBreak: "break-all" }}>{error}</div>
-                <button className="btn-green" onClick={() => fetchData(true)}>Retry</button>
+          {/* ═══════════════ CLIENT / VEHICLE TABS — normal scrollable layout ═══════════════ */}
+          {activeTab !== "overview" && (
+            <>
+              {/* Hero */}
+              <div style={{ padding: "40px 32px 20px", maxWidth: "700px" }}>
+                <div style={{ fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(74,222,128,0.55)", fontFamily: "'Inter',sans-serif", marginBottom: "10px", fontWeight: 600 }}>Client · Infants</div>
+                <h1 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: "clamp(28px,4vw,46px)", lineHeight: 1.1, letterSpacing: "-0.025em", color: "#f0f7f0", marginBottom: "10px" }}>
+                  Fleet Safety <span style={{ color: "#4ade80", fontStyle: "italic" }}>Scores,</span><br />At a Glance
+                </h1>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: "14px", color: "rgba(240,247,240,0.4)", lineHeight: 1.6, maxWidth: "440px", margin: 0 }}>
+                  Real-time safety performance across all sub-clients and vehicles.
+                </p>
               </div>
-            )}
 
-            {data && (
-              <>
-                {/* ══ OVERVIEW ══ */}
-                {activeTab === "overview" && (
-                  <div>
-                    {/* Chart 1: Donut */}
-                    <div style={CHART_CARD}>
-                      <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: "16px", color: "#f0f7f0", marginBottom: "4px", textAlign: "center", letterSpacing: "-0.01em" }}>
-                        Overall Monthly Alert Summary
+              {/* Stats */}
+              {data && (
+                <div style={{ padding: "0 32px 20px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  {[
+                    { label: "Overall Score",  val: String(overall), unit: "/ 100", green: true },
+                    { label: "Total Vehicles", val: String(data.totalVehicles) },
+                    { label: "Sub-Clients",    val: String(data.clients.filter(c => c.name !== "Other").length) },
+                    { label: "Other Vehicles", val: String(data.clients.find(c => c.name === "Other")?.totalVehicles ?? 0) },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: s.green ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.02)", border: s.green ? "1px solid rgba(74,222,128,0.2)" : "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "12px 20px", minWidth: "120px" }}>
+                      <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", fontFamily: "'Inter',sans-serif", marginBottom: "4px" }}>{s.label}</div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                        <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: "24px", color: s.green ? "#4ade80" : "#f0f7f0" }}>{s.val}</span>
+                        {s.unit && <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif" }}>{s.unit}</span>}
                       </div>
-                      <DonutAlertChart alerts={data.overallAlerts} />
                     </div>
+                  ))}
+                </div>
+              )}
 
-                    {/* Chart 2: Line — same CHART_CARD style, last child no bottom margin */}
-                    <div style={{ ...CHART_CARD, marginBottom: 0 }}>
-                      <LineAlertChart data={data.dateAlerts} title="Alert Trends Over Time" />
-                    </div>
-                  </div>
-                )}
+              {/* Tabs */}
+              <div style={{ padding: "0 32px", marginBottom: "28px" }}>
+                {tabBar}
+              </div>
 
-                {/* ══ CLIENT VIEW ══ */}
-                {activeTab === "client" && (
+              {/* Content */}
+              <div style={{ padding: "0 32px 60px" }}>
+                {errorBlock}
+
+                {data && activeTab === "client" && (
                   <>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
                       <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
@@ -206,8 +280,7 @@ export default function Dashboard() {
                   </>
                 )}
 
-                {/* ══ VEHICLE VIEW ══ */}
-                {activeTab === "vehicle" && (
+                {data && activeTab === "vehicle" && (
                   <>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
                       <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
@@ -225,14 +298,15 @@ export default function Dashboard() {
                     {filteredVehicles?.length === 0 && <div style={{ padding: "60px", textAlign: "center", color: "rgba(255,255,255,0.25)", fontFamily: "'Inter',sans-serif", fontSize: "14px" }}>No results for &quot;{search}&quot;</div>}
                   </>
                 )}
-              </>
-            )}
-          </div>
+              </div>
 
-          <footer style={{ borderTop: "1px solid rgba(255,255,255,0.04)", padding: "16px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.18)" }}>© {new Date().getFullYear()} Cautio · Fleet Intelligence Platform</span>
-            <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "11px", color: "rgba(74,222,128,0.35)" }}>cautio.com</span>
-          </footer>
+              <footer style={{ borderTop: "1px solid rgba(255,255,255,0.04)", padding: "16px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.18)" }}>© {new Date().getFullYear()} Cautio · Fleet Intelligence Platform</span>
+                <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "11px", color: "rgba(74,222,128,0.35)" }}>cautio.com</span>
+              </footer>
+            </>
+          )}
+
         </div>
       </div>
 
