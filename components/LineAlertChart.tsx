@@ -10,7 +10,14 @@ const SERIES = [
   { key: "overSpeed",         label: "Over Speed",         color: "#fde047" },
 ] as const;
 
-interface Props { data: DateAlertPoint[]; title?: string; }
+interface Props {
+  data: DateAlertPoint[];
+  title?: string;
+  /** When true the chart fills its flex parent's remaining height instead of
+   *  sizing itself by width alone. Use when the parent container has a defined
+   *  height (e.g. flex:1 / minHeight:0). */
+  fillHeight?: boolean;
+}
 
 function fmtY(n: number) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
@@ -36,9 +43,7 @@ function areaPath(pts: { x: number; y: number }[], baseY: number): string {
   return `${smoothPath(pts)} L ${pts[pts.length-1].x.toFixed(1)} ${baseY} L ${pts[0].x.toFixed(1)} ${baseY} Z`;
 }
 
-export default function LineAlertChart({ data, title }: Props) {
-  // ViewBox 900×420 — wide landscape ratio, no distortion
-  // width="100%" + no height + meet → proportional scaling identical to donut
+export default function LineAlertChart({ data, title, fillHeight = false }: Props) {
   const VW = 900, VH = 420;
   const PAD_L = 64, PAD_R = 24, PAD_T = 24, PAD_B = 68;
   const chartW = VW - PAD_L - PAD_R;
@@ -71,13 +76,10 @@ export default function LineAlertChart({ data, title }: Props) {
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (!svgRef.current || !data.length || !xStep) return;
     const rect = svgRef.current.getBoundingClientRect();
-    const scaleX = VW / rect.width;
-    // With meet, there may be letterbox padding — compute actual rendered chart area
     const svgAspect = VW / VH;
     const boxAspect = rect.width / rect.height;
     let offsetX = 0;
     if (boxAspect > svgAspect) {
-      // letterbox on sides
       const renderedW = rect.height * svgAspect;
       offsetX = (rect.width - renderedW) / 2;
     }
@@ -92,10 +94,137 @@ export default function LineAlertChart({ data, title }: Props) {
 
   if (!data.length) {
     return (
-      <div>
-        {title && <div style={{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:700,fontSize:"15px",color:"#f0f7f0",marginBottom:"16px"}}>{title}</div>}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"200px",color:"rgba(255,255,255,0.2)",fontFamily:"'Inter',sans-serif",fontSize:"13px",background:"rgba(255,255,255,0.02)",borderRadius:"14px",border:"1px solid rgba(255,255,255,0.05)"}}>
+      <div style={fillHeight ? { display:"flex", flexDirection:"column", width:"100%", flex:1, minHeight:0 } : {}}>
+        {title && <div style={{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:700,fontSize:"15px",color:"#f0f7f0",marginBottom:"16px",flexShrink:0}}>{title}</div>}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",height: fillHeight ? "100%" : "200px",color:"rgba(255,255,255,0.2)",fontFamily:"'Inter',sans-serif",fontSize:"13px",background:"rgba(255,255,255,0.02)",borderRadius:"14px",border:"1px solid rgba(255,255,255,0.05)"}}>
           No date-based data available
+        </div>
+      </div>
+    );
+  }
+
+  const svgEl = (
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${VW} ${VH}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{
+        display: "block",
+        cursor: "crosshair",
+        ...(fillHeight
+          ? { position: "absolute", inset: 0, width: "100%", height: "100%" }
+          : { width: "100%" }
+        ),
+      }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      <defs>
+        {SERIES.map(s => (
+          <linearGradient key={`g-${s.key}`} id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={s.color} stopOpacity="0.42"/>
+            <stop offset="100%" stopColor={s.color} stopOpacity="0.04"/>
+          </linearGradient>
+        ))}
+      </defs>
+
+      {yTicks.map(tick => {
+        const y = PAD_T + chartH - (tick/yMax)*chartH;
+        return (
+          <g key={tick}>
+            <line x1={PAD_L} y1={y} x2={PAD_L+chartW} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray={tick===0?"none":"5 5"}/>
+            <text x={PAD_L-8} y={y} textAnchor="end" dominantBaseline="middle" style={{fontFamily:"'Inter',sans-serif",fontSize:"11px",fill:"rgba(255,255,255,0.32)"}}>
+              {fmtY(tick)}
+            </text>
+          </g>
+        );
+      })}
+
+      {data.map((d,i) => {
+        if (i%everyN!==0 && i!==data.length-1) return null;
+        return (
+          <text key={i} x={PAD_L+i*xStep} y={baseY+16} textAnchor="middle" style={{fontFamily:"'Inter',sans-serif",fontSize:"10px",fill:"rgba(255,255,255,0.35)"}}>
+            {d.date}
+          </text>
+        );
+      })}
+
+      {[...SERIES].reverse().map(s => {
+        const pts = pointsMap[s.key];
+        if (!pts||pts.length<2) return null;
+        return <path key={`a-${s.key}`} d={areaPath(pts,baseY)} fill={`url(#g-${s.key})`} stroke="none"/>;
+      })}
+
+      {SERIES.map(s => {
+        const pts = pointsMap[s.key];
+        if (!pts||pts.length<2) return null;
+        return <path key={`l-${s.key}`} d={smoothPath(pts)} fill="none" stroke={s.color} strokeWidth="2" strokeOpacity={hoverIdx!==null?0.28:0.9}/>;
+      })}
+
+      {hoverX!==null && hoverData && (() => {
+        const active = SERIES.filter(s=>(hoverData[s.key] as number)>0);
+        const BOX_W=195, BOX_H=14+active.length*22+10;
+        const bx = tooltipLeft ? hoverX-BOX_W-16 : hoverX+16;
+        const by = Math.max(PAD_T, PAD_T+chartH/2-BOX_H/2);
+        return (
+          <>
+            <line x1={hoverX} y1={PAD_T} x2={hoverX} y2={baseY} stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="4 3"/>
+            {SERIES.map(s => {
+              const pts=pointsMap[s.key];
+              if (!pts||(hoverData[s.key] as number)===0) return null;
+              return <path key={`hl-${s.key}`} d={smoothPath(pts)} fill="none" stroke={s.color} strokeWidth="2.5" strokeOpacity="1"/>;
+            })}
+            {SERIES.map(s => {
+              const pts=pointsMap[s.key];
+              if (!pts||hoverIdx===null||(hoverData[s.key] as number)===0) return null;
+              return <circle key={`d-${s.key}`} cx={pts[hoverIdx].x} cy={pts[hoverIdx].y} r="5" fill={s.color} stroke="#0a0f0a" strokeWidth="2"/>;
+            })}
+            <g>
+              <rect x={bx} y={by} width={BOX_W} height={BOX_H} rx="10" fill="#0e160e" stroke="rgba(74,222,128,0.28)" strokeWidth="1" style={{filter:"drop-shadow(0 4px 16px rgba(0,0,0,0.7))"}}/>
+              <text x={bx+12} y={by+14} style={{fontFamily:"'Inter',sans-serif",fontSize:"10px",fill:"rgba(255,255,255,0.45)",fontWeight:600}}>{hoverData.date}</text>
+              {active.map((s,i) => (
+                <g key={`tt-${s.key}`}>
+                  <circle cx={bx+16} cy={by+26+i*22} r="4" fill={s.color}/>
+                  <text x={bx+28} y={by+26+i*22} dominantBaseline="middle" style={{fontFamily:"'Inter',sans-serif",fontSize:"11px",fill:"rgba(255,255,255,0.7)"}}>{s.label}</text>
+                  <text x={bx+BOX_W-10} y={by+26+i*22} textAnchor="end" dominantBaseline="middle" style={{fontFamily:"'Bricolage Grotesque',sans-serif",fontSize:"12px",fontWeight:700,fill:s.color}}>{fmtY(hoverData[s.key] as number)}</text>
+                </g>
+              ))}
+            </g>
+          </>
+        );
+      })()}
+
+      {(() => {
+        const ly=VH-20, lw=145, startX=(VW-SERIES.length*lw)/2;
+        return (
+          <g>
+            {SERIES.map((s,i) => {
+              const lx=startX+i*lw;
+              return (
+                <g key={`leg-${s.key}`}>
+                  <line x1={lx} y1={ly} x2={lx+18} y2={ly} stroke={s.color} strokeWidth="2.5" strokeOpacity="0.9"/>
+                  <circle cx={lx+9} cy={ly} r="3.5" fill={s.color}/>
+                  <text x={lx+26} y={ly} dominantBaseline="middle" style={{fontFamily:"'Inter',sans-serif",fontSize:"11.5px",fill:"rgba(255,255,255,0.5)"}}>{s.label}</text>
+                </g>
+              );
+            })}
+          </g>
+        );
+      })()}
+    </svg>
+  );
+
+  if (fillHeight) {
+    return (
+      <div style={{ width: "100%", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        {title && (
+          <div style={{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:700,fontSize:"14px",color:"#f0f7f0",marginBottom:"10px",letterSpacing:"-0.01em",flexShrink:0}}>
+            {title}
+          </div>
+        )}
+        {/* Absolutely-positioned SVG fills remaining flex height */}
+        <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+          {svgEl}
         </div>
       </div>
     );
@@ -108,115 +237,7 @@ export default function LineAlertChart({ data, title }: Props) {
           {title}
         </div>
       )}
-      {/* 
-        BOTH charts now use the exact same SVG scaling strategy:
-        width="100%" + no height attr + preserveAspectRatio="xMidYMid meet"
-        → zoom in: both grow proportionally  
-        → zoom out: both shrink proportionally
-        → no stretch, no distortion
-      */}
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${VW} ${VH}`}
-        width="100%"
-        preserveAspectRatio="xMidYMid meet"
-        style={{display:"block", cursor:"crosshair"}}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      >
-        <defs>
-          {SERIES.map(s => (
-            <linearGradient key={`g-${s.key}`} id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor={s.color} stopOpacity="0.42"/>
-              <stop offset="100%" stopColor={s.color} stopOpacity="0.04"/>
-            </linearGradient>
-          ))}
-        </defs>
-
-        {yTicks.map(tick => {
-          const y = PAD_T + chartH - (tick/yMax)*chartH;
-          return (
-            <g key={tick}>
-              <line x1={PAD_L} y1={y} x2={PAD_L+chartW} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray={tick===0?"none":"5 5"}/>
-              <text x={PAD_L-8} y={y} textAnchor="end" dominantBaseline="middle" style={{fontFamily:"'Inter',sans-serif",fontSize:"11px",fill:"rgba(255,255,255,0.32)"}}>
-                {fmtY(tick)}
-              </text>
-            </g>
-          );
-        })}
-
-        {data.map((d,i) => {
-          if (i%everyN!==0 && i!==data.length-1) return null;
-          return (
-            <text key={i} x={PAD_L+i*xStep} y={baseY+16} textAnchor="middle" style={{fontFamily:"'Inter',sans-serif",fontSize:"10px",fill:"rgba(255,255,255,0.35)"}}>
-              {d.date}
-            </text>
-          );
-        })}
-
-        {[...SERIES].reverse().map(s => {
-          const pts = pointsMap[s.key];
-          if (!pts||pts.length<2) return null;
-          return <path key={`a-${s.key}`} d={areaPath(pts,baseY)} fill={`url(#g-${s.key})`} stroke="none"/>;
-        })}
-
-        {SERIES.map(s => {
-          const pts = pointsMap[s.key];
-          if (!pts||pts.length<2) return null;
-          return <path key={`l-${s.key}`} d={smoothPath(pts)} fill="none" stroke={s.color} strokeWidth="2" strokeOpacity={hoverIdx!==null?0.28:0.9}/>;
-        })}
-
-        {hoverX!==null && hoverData && (() => {
-          const active = SERIES.filter(s=>(hoverData[s.key] as number)>0);
-          const BOX_W=195, BOX_H=14+active.length*22+10;
-          const bx = tooltipLeft ? hoverX-BOX_W-16 : hoverX+16;
-          const by = Math.max(PAD_T, PAD_T+chartH/2-BOX_H/2);
-          return (
-            <>
-              <line x1={hoverX} y1={PAD_T} x2={hoverX} y2={baseY} stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="4 3"/>
-              {SERIES.map(s => {
-                const pts=pointsMap[s.key];
-                if (!pts||(hoverData[s.key] as number)===0) return null;
-                return <path key={`hl-${s.key}`} d={smoothPath(pts)} fill="none" stroke={s.color} strokeWidth="2.5" strokeOpacity="1"/>;
-              })}
-              {SERIES.map(s => {
-                const pts=pointsMap[s.key];
-                if (!pts||hoverIdx===null||(hoverData[s.key] as number)===0) return null;
-                return <circle key={`d-${s.key}`} cx={pts[hoverIdx].x} cy={pts[hoverIdx].y} r="5" fill={s.color} stroke="#0a0f0a" strokeWidth="2"/>;
-              })}
-              <g>
-                <rect x={bx} y={by} width={BOX_W} height={BOX_H} rx="10" fill="#0e160e" stroke="rgba(74,222,128,0.28)" strokeWidth="1" style={{filter:"drop-shadow(0 4px 16px rgba(0,0,0,0.7))"}}/>
-                <text x={bx+12} y={by+14} style={{fontFamily:"'Inter',sans-serif",fontSize:"10px",fill:"rgba(255,255,255,0.45)",fontWeight:600}}>{hoverData.date}</text>
-                {active.map((s,i) => (
-                  <g key={`tt-${s.key}`}>
-                    <circle cx={bx+16} cy={by+26+i*22} r="4" fill={s.color}/>
-                    <text x={bx+28} y={by+26+i*22} dominantBaseline="middle" style={{fontFamily:"'Inter',sans-serif",fontSize:"11px",fill:"rgba(255,255,255,0.7)"}}>{s.label}</text>
-                    <text x={bx+BOX_W-10} y={by+26+i*22} textAnchor="end" dominantBaseline="middle" style={{fontFamily:"'Bricolage Grotesque',sans-serif",fontSize:"12px",fontWeight:700,fill:s.color}}>{fmtY(hoverData[s.key] as number)}</text>
-                  </g>
-                ))}
-              </g>
-            </>
-          );
-        })()}
-
-        {(() => {
-          const ly=VH-20, lw=145, startX=(VW-SERIES.length*lw)/2;
-          return (
-            <g>
-              {SERIES.map((s,i) => {
-                const lx=startX+i*lw;
-                return (
-                  <g key={`leg-${s.key}`}>
-                    <line x1={lx} y1={ly} x2={lx+18} y2={ly} stroke={s.color} strokeWidth="2.5" strokeOpacity="0.9"/>
-                    <circle cx={lx+9} cy={ly} r="3.5" fill={s.color}/>
-                    <text x={lx+26} y={ly} dominantBaseline="middle" style={{fontFamily:"'Inter',sans-serif",fontSize:"11.5px",fill:"rgba(255,255,255,0.5)"}}>{s.label}</text>
-                  </g>
-                );
-              })}
-            </g>
-          );
-        })()}
-      </svg>
+      {svgEl}
     </div>
   );
 }
